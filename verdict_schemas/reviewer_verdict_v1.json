@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://taifoon.dev/schemas/reviewer_verdict_v1.json",
+  "title": "Reviewer Verdict v1",
+  "description": "Signed verdict emitted by an open-mamba reviewer agent.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "reviewer_id",
+    "reviewer_version",
+    "bounty_id",
+    "submission_hash",
+    "contributor_wallet",
+    "verdict",
+    "reason_code",
+    "replay_block_set",
+    "signed_at",
+    "signature"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "reviewer_verdict_v1"
+    },
+    "reviewer_id": {
+      "type": "string",
+      "description": "Slug from open-mamba/reviewers.xml e.g. 'evm-replay'"
+    },
+    "reviewer_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "bounty_id": {
+      "type": "string",
+      "description": "id from bounties.xml"
+    },
+    "submission_hash": {
+      "type": "string",
+      "pattern": "^0x[a-f0-9]{64}$",
+      "description": "sha256 of the submission tarball"
+    },
+    "contributor_wallet": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{40}$"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["pass", "fail", "inconclusive"]
+    },
+    "reason_code": {
+      "type": "string",
+      "enum": [
+        "REPLAY_MATCH",
+        "SCHEMA_CONFORMS",
+        "ADVERSARIAL_PASSED",
+        "ORACLE_RESOLVED",
+        "REPLAY_DIFF",
+        "SCHEMA_INVALID",
+        "PERF_BUDGET_EXCEEDED",
+        "REORG_UNSAFE",
+        "DUP_HANDLING_INVALID",
+        "LICENSE_MISSING",
+        "INSUFFICIENT_FIXTURES",
+        "NOVEL_PROTOCOL_BEHAVIOR",
+        "ENCLAVE_FAILURE"
+      ]
+    },
+    "reason_detail": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "Free-text detail. Cap at 512 chars for on-chain bytes32 ref."
+    },
+    "replay_block_set": {
+      "type": "string",
+      "description": "Path or content-hash of the replay block set used"
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Reviewer-specific measurements; reviewers SHOULD include these.",
+      "properties": {
+        "fixtures_replayed":  {"type": "integer", "minimum": 0},
+        "matched_count":      {"type": "integer", "minimum": 0},
+        "diverged_count":     {"type": "integer", "minimum": 0},
+        "p50_decode_ms":      {"type": "number"},
+        "p95_decode_ms":      {"type": "number"},
+        "p99_decode_ms":      {"type": "number"},
+        "adversarial_passed": {"type": "integer", "minimum": 0},
+        "adversarial_total":  {"type": "integer", "minimum": 0}
+      }
+    },
+    "signed_at": {
+      "type": "integer",
+      "description": "Unix timestamp seconds"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^0x[a-f0-9]+$",
+      "description": "secp256k1 signature over canonicalized verdict body, signed by reviewer agent key"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,85 @@
+## Default values for mamba-nemotron-agw-adapter.
+## Override per-environment with `helm install ... -f overrides.yaml`.
+
+image:
+  repository: ghcr.io/yawningmonsoon/mamba-nemotron-agw-adapter
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+  digest: ""   # populated by cosign at publish; empty in dev
+
+replicaCount: 3
+podDisruptionBudget:
+  minAvailable: 2
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+service:
+  type: ClusterIP
+  port: 8080
+
+agentos:
+  certificateRef: ""        # required: minted by Certification Service
+  agentgateway:
+    upstreamRef: nemotron-on-prem
+    spiffeIdentity: spiffe://agentos.local/ns/agent-runtime/sa/mamba-nemotron-adapter
+  audit:
+    bucket: agentos-audit-immutable
+    bufferSeconds: 1
+    maxBufferBytes: 1048576
+  lineage:
+    marquezUrl: http://marquez.observability.svc.cluster.local:5000
+    namespace: agentos.llm-calls
+  observability:
+    otelCollector: opentelemetry-collector.observability.svc.cluster.local:4317
+
+triton:
+  endpoint: triton-inference.gpu-pool.svc.cluster.local:8001
+  tlsSecretRef: triton-mtls
+  models:
+    - nemotron-4-340b-instruct
+    - llama-3.1-nemotron-70b-instruct
+    - nemotron-mini-4b-instruct
+
+guardrails:
+  bedrockGuardrailId: gr-mamba-nemotron-default
+  opaBundleConfigMap: mamba-nemotron-agw-adapter-opa
+
+memory:
+  redisUrl: redis://redis-session.agent-runtime.svc.cluster.local:6379
+  dynamodbQuotaTable: agentos-llm-call-quotas
+
+ipProtection:
+  kmsKeyAlias: alias/agentos/mamba-nemotron-adapter
+
+networkPolicy:
+  enabled: true
+  agentgatewayNamespace: gloo-system
+  tritonNamespace: gpu-pool
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [mamba-nemotron-agw-adapter]
+          topologyKey: topology.kubernetes.io/zone

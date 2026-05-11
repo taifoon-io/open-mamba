@@ -1,0 +1,482 @@
+<div align="center">
+
+```
+                          ╭─╮
+                          ╰╮│  open-mamba
+                           ││
+                           ╯╰╮  Autonomous task bus for AI agents.
+```
+
+# open-mamba
+
+**The free, MIT-licensed engine behind [Taifoon](https://taifoon.dev).** Run it on
+your laptop or your VPS. Queue work durably, dispatch to Claude or to your own
+Nemotron host, and watch the burn in a single dashboard at `localhost:1337`.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-7c6af7.svg?style=flat-square)](LICENSE)
+[![Built with Rust](https://img.shields.io/badge/Built_with-Rust-7c6af7?style=flat-square&logo=rust)](https://www.rust-lang.org)
+[![Discord](https://img.shields.io/badge/community-Discord-7c6af7?style=flat-square&logo=discord)](https://taifoon.dev/discord)
+
+[Website](https://taifoon.dev) · [Docs](https://taifoon.dev/docs) · [Pricing](https://taifoon.dev/pricing) · [taifoon-mamba (Pro)](https://taifoon.dev/products/taifoon-mamba) · [taifoon-intel](https://taifoon.dev/products/taifoon-intel)
+
+</div>
+
+---
+
+## The product family
+
+| Project | What it is | License |
+|---|---|---|
+| **open-mamba** *(this repo)* | The Rust engine. Durable queue, agent dispatch, webhook + cron triggers. Self-hosted, no telemetry. | **MIT — free** |
+| **[taifoon-mamba](https://taifoon.dev/products/taifoon-mamba)** | Hosted Pro tier on top of open-mamba. Cost-optimizer router, SSO/RBAC, audit log, branded delivery. | Commercial |
+| **[taifoon-intel](https://taifoon.dev/products/taifoon-intel)** | The LLM brain — three QLoRA adapters fine-tuned on Nemotron-3-Nano-4B, served on managed GPU. | Commercial |
+
+You get the same engine across every tier. Upgrading turns on the proprietary commercial layer; downgrading just removes a license key.
+
+---
+
+## Architecture
+
+```
+                        ┌──────────────────┐
+   POST /ingest    ────►│   open-mamba     │  ◄── DuckDB lake (durable queue)
+                        │   :1337          │
+                        │   ┌──────────┐   │
+                        │   │  worker  │   │  polls pending, max 4 in-flight
+                        │   └────┬─────┘   │
+                        └────────┼─────────┘
+                                 │
+                ┌────────────────┴────────────────┐
+                ▼                                 ▼
+        ┌────────────┐                    ┌────────────────┐
+        │  openfang  │ ──► claude -p ─►   │  nemotron      │ ──► your inference provider
+        │  :4200     │     (local CLI,    │  HTTP client   │     (vLLM / TGI / Ollama
+        │            │      your auth)    │  bearer/grid   │      / managed grid endpoint)
+        └────────────┘                    └────────────────┘
+```
+
+---
+
+## One-liner setup
+
+```bash
+# Prereqs (one-time):
+brew install gh jq           # gh CLI + jq are required
+gh auth login                # log into your GitHub account
+claude /login                # log into Claude Code (Pro/Max/Team plan)
+
+# Build + symlink the mamba CLI:
+cd ~/projects/open-mamba && cargo build --bin open-mamba
+cd ~/projects/openfang   && cargo build --release --bin openfang   # ~10 min first time
+ln -sf ~/projects/open-mamba/scripts/mamba /opt/homebrew/bin/mamba
+
+# Boot the autonomous bus:
+mamba up
+```
+
+That's it. `mamba up` brings up everything, registers the agents, and
+smoke-tests dispatch. After that, `POST /ingest` sends Claude tasks.
+
+---
+
+## Daily commands
+
+```bash
+mamba up                 # start everything (idempotent — safe to re-run)
+mamba status             # running pids, ports, queue depth, recent costs
+mamba logs               # tail open-mamba + openfang logs
+mamba down               # stop both daemons (alias: stop)
+
+mamba retry-pending      # re-dispatch any stuck tasks (rare; use after a crash)
+mamba retry <task-id>    # re-dispatch one task by ID
+
+mamba register-agents    # spawn missing agents (run after editing manifests)
+mamba auth | refresh     # legacy: pull OAuth from keychain (not needed for default flow)
+```
+
+---
+
+## Default delivery flow
+
+Every task submitted to a coding agent (`coder`, `devops-lead`) is **automatically wrapped in a coder → reviewer workflow**. You do not need to define a workflow manually — it happens at ingest.
+
+```
+POST /ingest  (assigned_agent: "coder")
+        │
+        ▼
+  ┌─────────────┐
+  │    coder    │  claude-opus-4-7 — delivers the work
+  └──────┬──────┘
+         │ done
+         ▼
+  ┌──────────────────┐
+  │  code-reviewer   │  claude-sonnet-4-6 — audits the output
+  └──────┬───────────┘
+         │
+    ┌────┴──────────────────┐
+    │                       │
+ APPROVED               CHANGES_REQUESTED          BLOCKED
+ LGTM / CONFIRMED           │                     (permanent)
+    │                       ▼                         │
+  run ✓            re-dispatch coder              run failed ✗
+                   with reviewer feedback
+                   (up to 3 fixup rounds,
+                    then run fails)
+```
+
+The ingest response includes `auto_review: true`, a `workflow_id`, and a `run_id` so you can track both steps:
+
+```json
+{
+  "id":          "<coder-task-uuid>",
+  "workflow_id": "<uuid>",
+  "run_id":      "<uuid>",
+  "auto_review": true
+}
+```
+
+Track the full run at `GET /api/workflows/runs/<run_id>`. The `outputs` array grows as steps complete — each entry carries `agent`, `verdict` (`approved` / `changes_requested` / `blocked`), `response`, and token/cost data.
+
+Non-coding agents (nemotron adapters, planner, taifoon-intel, etc.) are dispatched directly — no reviewer step.
+
+---
+
+## Three ways to submit work
+
+### 1. Direct ingest
+
+```bash
+curl -X POST http://localhost:1337/ingest \
+  -H 'content-type: application/json' \
+  -d '{
+    "project":        "demo",
+    "assigned_agent": "coder",
+    "model":          "claude-opus-4-7",
+    "payload":        "Summarize the deploy docs in 100 words.",
+    "priority":       1,
+    "source":         "claude_opus"
+  }'
+# → {"id":"<uuid>"}
+```
+
+The worker picks it up within ~2 seconds. Track with `GET /api/tasks/<id>`.
+
+### 2. HTTP webhook (n8n-style trigger)
+
+Register a webhook once:
+
+```bash
+curl -X POST http://localhost:1337/api/webhooks \
+  -H 'content-type: application/json' \
+  -d '{
+    "hook_id":          "github-pr-summary",
+    "project":          "demo",
+    "assigned_agent":   "coder",
+    "model":            "claude-opus-4-7",
+    "payload_template": "Summarize this GitHub PR in three bullets.",
+    "priority":         1
+  }'
+```
+
+Then any external service can fire it (no auth required by default — gate
+with `MAMBA_API_KEY` for sensitive hooks):
+
+```bash
+curl -X POST http://localhost:1337/webhooks/github-pr-summary \
+  -H 'content-type: application/json' \
+  -d '{"pr_url":"https://github.com/owner/repo/pull/42","title":"..."}'
+# → {"hook_id":"github-pr-summary","task_id":"<uuid>"}
+```
+
+The webhook's `payload_template` and the request body are bundled into a
+JSON object that becomes the task payload, so the agent sees both.
+
+### 3. Cron schedule
+
+```bash
+curl -X POST http://localhost:1337/api/schedules \
+  -H 'content-type: application/json' \
+  -d '{
+    "id":             "daily-summary",
+    "cron_expr":      "0 9 * * *",
+    "project":        "demo",
+    "assigned_agent": "coder",
+    "model":          "claude-opus-4-7",
+    "payload":        "Summarize yesterday'\''s tasks across the queue."
+  }'
+# → {"id":"daily-summary","next_run_at":"2026-04-28T09:00:00+00:00"}
+```
+
+Standard 5-field cron expressions in UTC. The schedule worker ticks every
+30 seconds and fires due schedules exactly once per match.
+
+### Listing + management
+
+| Endpoint | What |
+|---|---|
+| `GET /api/webhooks` | list all registered hooks |
+| `DELETE /api/webhooks/:hook_id` | remove a hook |
+| `GET /api/schedules` | list all schedules with `next_run_at` |
+| `DELETE /api/schedules/:id` | remove a schedule |
+| `GET /api/tasks/:id` | inspect any task by id |
+
+---
+
+## How auth works
+
+**You don't manage Anthropic credentials.** Tasks routed to a Claude model
+go through openfang's `claude-code` provider, which shells out to the
+`claude` CLI on your `$PATH`. Whatever auth `claude /login` set up,
+mamba inherits.
+
+| Where auth lives | What it covers |
+|---|---|
+| `claude /login` (macOS keychain) | All Claude tasks (opus, sonnet, haiku) |
+| `gh auth login` (macOS keychain via gh) | Git push, GitHub API, PR creation |
+| `.env` / `~/.mamba/runtime.env` | Optional: `ANTHROPIC_API_KEY` for direct API path |
+
+`mamba up` deliberately **strips `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN`
+from the openfang environment** because the `claude` CLI prefers env-var
+keys over its own keychain session — a stale env var causes 401s even when
+your `claude /login` is healthy.
+
+If you'd rather use a real API key (skips Claude Code entirely):
+1. `echo 'ANTHROPIC_API_KEY=sk-ant-api03-…' >> ~/.mamba/runtime.env`
+2. Submit tasks with `model: "claude-sonnet-4-20250514"` (the bus's
+   model mapper passes literal `claude-*-NNN` strings through to the
+   standard Anthropic driver, bypassing the claude-code shim).
+
+---
+
+## Inference providers (nemotron tasks)
+
+open-mamba ships **no default inference endpoint**. To dispatch
+`nemotron/<adapter>` tasks, set `NEMOTRON_BASE_URL` in `.env` to a server
+that exposes:
+
+- `POST <base>/<adapter>/generate` — JSON body `{prompt, system?,
+  max_tokens?, temperature?}`, response `{response, tokens, duration,
+  tokens_per_second, model?}`
+- `GET  <base>/<adapter>/health`
+
+Adapter slugs are forwarded verbatim, so any provider that handles
+arbitrary path segments works (vLLM with multi-LoRA routing, TGI with
+adapters, Ollama with model aliases, etc.).
+
+### Three ways to plug in
+
+| Mode | Set | Auth header sent |
+|---|---|---|
+| **Self-host** (vLLM, TGI, Ollama) | `NEMOTRON_BASE_URL`, optionally `NEMOTRON_API_KEY` | `Authorization: Bearer <key>` |
+| **Generic OpenAI-compatible** | `NEMOTRON_BASE_URL`, `NEMOTRON_API_KEY` | `Authorization: Bearer <key>` |
+| **Taifoon-grid** (managed) | `NEMOTRON_BASE_URL`, `TAIFOON_GRID_KEY=taif-…` | `x-taifoon-key: <key>` |
+
+### Taifoon-grid (paid managed access)
+
+The taifoon-grid is a metered inference service with on-chain billing —
+register a wallet, top up USDC, get a deterministic API key derived from
+your wallet + chainId. Each call deducts grid credits per the published
+weights (see the grid's own pricing docs). The grid contract is the
+source of truth for balance and key validity; open-mamba only forwards
+the `x-taifoon-key` header.
+
+This is the same payment rail as the rest of the taifoon ecosystem
+(price oracle, signal subscriptions, V5 proof bundles) — one wallet,
+one key, one balance, all consumption metered uniformly.
+
+To get a key: register your wallet at the grid endpoint's
+`/api/grid/register`, fund it, then export:
+
+```bash
+echo "TAIFOON_GRID_KEY=taif-…" >> ~/.mamba/runtime.env
+echo "NEMOTRON_BASE_URL=<your-grid-endpoint>" >> ~/.mamba/runtime.env
+```
+
+(Both keys are forwarded if both are set — useful when an upstream
+proxy needs Bearer auth and the grid contract validates the
+`x-taifoon-key` separately.)
+
+---
+
+## GitHub identity for agents
+
+Tasks that do git work (commits, PRs, pushes) inherit the machine's
+existing `gh` + git config. To keep the *commit author* and the *push
+identity* aligned with whatever account `gh auth login` is using, run:
+
+```bash
+mamba git-init                # in any repo where an agent will commit
+```
+
+That wrapper:
+
+1. Reads the active gh login (`gh api user --jq .login`).
+2. Sets `git config user.name` and `user.email` to the gh-provided
+   identity (`<login>@users.noreply.github.com` — GitHub's privacy
+   forwarder, never reveals a real address).
+3. Runs `gh auth setup-git` so HTTPS pushes use the gh-stored token
+   as the credential helper.
+
+After that, any agent (or you) who commits in that repo signs as the
+same account that pushes — no split identity, nothing personal in the
+log.
+
+To inspect what an agent will commit as:
+
+```bash
+mamba whoami      # active gh login + configured git committer in $PWD
+```
+
+---
+
+## Architecture
+
+### `mamba-api` (port 1337) — the bus
+- DuckDB lake at `data/mamba.duckdb` holds all envelopes
+- `POST /ingest` writes a row, worker picks it up
+- `POST /api/tasks/:id/retry` and `POST /api/tasks/retry-pending` reset
+  status back to `pending` for re-dispatch
+- Background worker: 2s poll, max 4 concurrent dispatches
+
+### `mamba-bus` — the dispatcher
+- `Bus.route` decides nemotron vs openfang based on `model` field
+- Models matching `nemotron/*` → direct HTTP to your `NEMOTRON_BASE_URL`
+- Everything else → openfang (which then routes to claude-code)
+- Token usage and cost are written back to DuckDB on completion
+
+### `openfang` (port 4200) — the agent runtime
+- Per-agent TOML manifests at `agents/openfang-manifests/*.toml`
+- Each agent has a fixed model (manifest-level — openfang's cron
+  ignores per-task model overrides, so model = agent identity)
+- Default agents: `coder` (opus), `code-reviewer` (sonnet),
+  `taifoon-intel` (nemotron), `assistant` (default)
+
+### `claude-code` provider in openfang
+- Defined in `openfang/crates/openfang-runtime/src/drivers/claude_code.rs`
+- Spawns `claude -p '<prompt>' --dangerously-skip-permissions
+  --output-format json --model <opus|sonnet|haiku>` per turn
+- Uses your local CLI session — no API key in env
+
+---
+
+## File locations
+
+| Path | What |
+|---|---|
+| `~/projects/open-mamba/` | This repo (bus, lake, worker, scripts) |
+| `~/projects/openfang/` | Agent runtime (separate repo, has the OAuth patch) |
+| `/opt/homebrew/bin/mamba` | Symlink → `scripts/mamba` |
+| `~/.mamba/runtime.env` | Auto-generated env loaded by both daemons |
+| `~/.mamba/logs/` | open-mamba.log + openfang.log |
+| `~/.mamba/{open-mamba,openfang}.pid` | Pid files for `mamba down/status` |
+| `~/.openfang/data/openfang.db` | openfang's session/agent SQLite store |
+| `~/projects/open-mamba/data/mamba.duckdb` | The task lake |
+| `~/projects/open-mamba/agents/openfang-manifests/` | Agent definitions |
+
+---
+
+## Patched dependencies
+
+This setup ships two upstream patches that are not yet merged:
+
+1. **`openfang/crates/openfang-runtime/src/drivers/anthropic.rs`** — adds
+   OAuth Bearer auth detection (`sk-ant-oat` prefix → `Authorization:
+   Bearer` + `anthropic-beta: oauth-2025-04-20`). Currently unused since
+   we route through `claude-code`, but available as a fallback.
+
+2. **`open-mamba/crates/mamba-bus/src/openfang.rs`** — replaced cron-based
+   dispatch with direct `POST /api/agents/{id}/message`. The cron path
+   re-fired tasks on every tick because openfang's `compute_next_run` for
+   `CronSchedule::At` returns the same scheduled time forever. Direct
+   dispatch + the queue worker is the proper one-shot pattern.
+
+---
+
+## Public deployment hardening
+
+This repo is safe to publish — the build runs without secrets, and CI
+includes a [gitleaks](https://github.com/gitleaks/gitleaks) scan
+(`.github/workflows/secret-scan.yml`) that fails any push or PR
+introducing a credential. But running the **bus itself** publicly
+without auth would let anyone spend your nemotron / claude budget. The
+checklist:
+
+1. **Set `MAMBA_API_KEY`** before exposing the server beyond localhost:
+
+   ```bash
+   echo "MAMBA_API_KEY=$(openssl rand -hex 32)" >> ~/projects/open-mamba/.env
+   ```
+
+   When set, `/ingest`, `/api/tasks/*/retry`, and
+   `/api/nemotron/*/generate` require `Authorization: Bearer <key>` (or
+   `x-mamba-key: <key>`). Read endpoints (`/api/tasks`, `/api/analytics/*`,
+   `/health`, `/api/nemotron/health`) stay open so dashboards work.
+
+2. **Bind to a private interface** unless you're behind a TLS-terminating
+   reverse proxy: set `BIND=127.0.0.1` rather than the default `0.0.0.0`.
+
+3. **Don't expose openfang directly** — it has no auth at all. Keep it on
+   localhost; `mamba up` configures it that way (`api_listen = 127.0.0.1:4200`).
+
+4. **Rotate `MAMBA_ENCRYPT_KEY`** if you've used the all-zeroes
+   placeholder from `.env.example`. The audit-log encryption depends on
+   it being secret.
+
+5. **No private chat IDs in code.** The `MAMBA_TELEGRAM_CHAT` var is
+   blank by default — set it locally only if you want delivery to a
+   personal chat. Don't commit a populated `.env`.
+
+6. **CI runs unauthenticated.** Workflows in `.github/workflows/` request
+   only `contents: read`. They never need API keys, GitHub PATs, or any
+   secret to validate a PR.
+
+If you want this repo backed up on GitHub under your active `gh` account:
+
+```bash
+cd ~/projects/open-mamba
+gh repo create open-mamba --public --source=. --remote=origin --push
+```
+
+That uses the credential helper that `gh auth login` already configured.
+No tokens to copy. Same applies to a fork of openfang if you want to
+preserve the OAuth patch.
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `mamba refresh` returns 429 | Anthropic OAuth endpoint rate limit (~3 req/min) | Wait 5 min, try again |
+| Task stuck in `dispatched` | Worker started after task came in | `mamba retry <id>` |
+| Task fails with `Invalid API key` | `ANTHROPIC_API_KEY` set in environment | `unset ANTHROPIC_API_KEY && mamba down && mamba up` |
+| `claude CLI failed` empty stderr | `claude` binary not in openfang's PATH | Verify `which claude` and `mamba down && mamba up` |
+| `openfang agent 'X' not found` | Manifest exists but agent not spawned | `mamba register-agents` |
+| Commits attributed to wrong user | Local `git config user.email` differs from gh | `git config user.email <correct-email>` per repo |
+
+For deeper debugging: `mamba logs` tails both daemons live.
+
+---
+
+## What's shipped
+
+- [x] Durable DuckDB task queue — survives restarts, WAL-safe purge on startup
+- [x] Coder → reviewer auto-workflow on every ingest (no manual workflow definition needed)
+- [x] Reviewer feedback loop — `CHANGES_REQUESTED` re-dispatches coder with full context, up to 3 fixup rounds
+- [x] `BLOCKED` verdict permanently fails the run — no wasted retries
+- [x] Nemotron adapter routing — taifoon / polymarket / algotrada / general, with grid-key auth and buy-on-Base redirect
+- [x] HTTP webhook triggers (n8n-style, external services can fire tasks)
+- [x] Cron schedules (5-field UTC, internal 30s tick — no system cron needed)
+- [x] DAG workflow runner — linear chains with `__previous` injection
+- [x] On-chain billing anchor (taifoon RPC, `chain_tx` on every completed task)
+- [x] Task detail drawer in the console UI (click any row)
+- [x] Transient-error retry with backoff (network blips, 5xx) vs permanent failure (4xx, agent not found)
+- [x] 15-min stuck-task reaper + 20-min per-dispatch hard timeout
+
+## Roadmap
+
+- [ ] Overseer agent using Claude `/loop` dynamic wakeup — watches queue
+      depth, retries failures, summarises completions on its own cadence.
+- [ ] Webhook completion delivery (Telegram, Slack, email).
+- [ ] Per-agent token budgets enforced at dispatch time.
+- [ ] Reviewer-driven DAG branching (spawn additional specialist tasks from reviewer verdict).

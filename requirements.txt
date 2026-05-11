@@ -1,0 +1,10 @@
+# open-mamba reviewer fleet — bootstrap dependencies
+# Production runs in confidential-compute enclave; this is for local dev.
+#
+# Optional production deps (pinned in enclave manifest):
+#   web3==7.x         (on-chain verdict submission)
+#   jsonschema==4.x   (rich schema validation)
+#   eth-account==0.x  (HSM-friendly signing)
+#
+# Bootstrap is dependency-free by design — orchestrator + reference reviewers
+# only use the Python stdlib.

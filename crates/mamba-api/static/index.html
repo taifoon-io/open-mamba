@@ -1,0 +1,1826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0c0a" />
+  <title>open-mamba · console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ──────────────────────────────────────────────────────────────────────
+       open-mamba console — design tokens
+       Same family as open-mamba.dev: mint-green primary, silver-on-near-black,
+       square corners, JetBrains Mono for chrome.
+       ────────────────────────────────────────────────────────────────────── */
+    :root {
+      --bg:        #0a0c0a;     /* near-black, faint warmth */
+      --surface:   #11140f;
+      --surface-2: #161916;
+      --border:    rgba(230, 240, 247, 0.06);
+      --border-2:  rgba(230, 240, 247, 0.12);
+      --text:      #E6F0F7;     /* shared silver */
+      --text-60:   rgba(230, 240, 247, 0.60);
+      --text-45:   rgba(230, 240, 247, 0.45);
+      --text-30:   rgba(230, 240, 247, 0.30);
+
+      --brand:     #34D399;     /* mamba mint green */
+      --brand-08:  rgba(52, 211, 153, 0.08);
+      --brand-15:  rgba(52, 211, 153, 0.15);
+      --brand-30:  rgba(52, 211, 153, 0.30);
+
+      --family:    #3DA5FF;     /* taifoon sky-blue — for Pro callouts */
+      --accent:    #F472B6;     /* pink — playful moments */
+      --info:      #38bdf8;
+      --success:   #34D399;
+      --warn:      #fbbf24;
+      --danger:    #f87171;
+
+      --font:      'Inter', system-ui, -apple-system, sans-serif;
+      --mono:      'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    ::selection { background: var(--brand-15); color: var(--text); }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Topbar ─────────────────────────────────────────────────────────── */
+    header {
+      display: flex; align-items: center; gap: 24px;
+      padding: 0 24px; height: 56px;
+      border-bottom: 1px solid var(--border);
+      background: rgb(17 20 15 / 0.85);
+      backdrop-filter: blur(10px);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 10px; }
+    .brand-word {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      color: var(--text);
+    }
+    .brand-word .accent { color: var(--brand); }
+
+    nav { display: flex; gap: 2px; margin-left: 8px; }
+    nav button {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-60);
+      font: 500 11px/1 var(--mono);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 7px 12px;
+      transition: color .15s, background .15s;
+    }
+    nav button:hover { background: rgba(230, 240, 247, 0.04); color: var(--text); }
+    nav button.active {
+      background: var(--brand-08);
+      color: var(--brand);
+      border-bottom: 1px solid var(--brand);
+    }
+
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      background: rgba(22, 25, 22, 0.6);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-60);
+    }
+    .pill.offline { color: var(--danger); border-color: rgba(248, 113, 113, 0.25); }
+    .live-dot {
+      position: relative;
+      width: 7px; height: 7px;
+      background: var(--brand);
+    }
+    .live-dot::after {
+      content: ''; position: absolute; inset: 0; background: var(--brand);
+      animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+    .pill.offline .live-dot { background: var(--danger); }
+    .pill.offline .live-dot::after { background: var(--danger); }
+    @keyframes ping { 75%, 100% { transform: scale(2.4); opacity: 0; } }
+
+    .upgrade {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px;
+      background: rgba(61, 165, 255, 0.08);
+      color: var(--family);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      border: 1px solid rgba(61, 165, 255, 0.30);
+      transition: background .15s, color .15s;
+    }
+    .upgrade:hover { background: rgba(61, 165, 255, 0.16); }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    main { flex: 1; padding: 32px 24px 64px; max-width: 1240px; width: 100%; margin: 0 auto; }
+    .page { display: none; animation: fadeIn .25s ease-out; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+    .bracketed {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-45);
+      margin-bottom: 8px;
+    }
+    .bracketed::before { content: '['; color: var(--brand); }
+    .bracketed::after  { content: ']'; color: var(--brand); }
+    .page-title { font-size: 24px; font-weight: 600; letter-spacing: -0.005em; }
+    .page-sub { color: var(--text-60); font-size: 13px; margin-top: 6px; line-height: 1.55; max-width: 560px; }
+
+    /* ── Cards ─────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 22px;
+    }
+    .card-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-45);
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .card-title::before { content: '['; color: var(--brand); padding-right: 6px; }
+    .card-title::after { content: ']'; color: var(--brand); padding-left: 6px; }
+    .card-title .right-meta { font-family: var(--mono); font-weight: 500; letter-spacing: 0.1em; color: var(--text-30); }
+
+    /* ── Grid ─────────────────────────────────────────────────────────── */
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 20px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 20px; }
+    .grid-4 > .card, .grid-2 > .card { border: none; }
+    @media (max-width: 900px) {
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    /* ── Stat cards — ultra-thin huge mono, taifoon family style ────────── */
+    .stat .stat-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-45);
+    }
+    .stat .stat-value {
+      font-family: var(--mono);
+      font-size: clamp(28px, 3vw, 38px);
+      font-weight: 200;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      margin-top: 14px;
+    }
+    .stat .stat-sub { font-size: 11px; color: var(--text-45); margin-top: 8px; font-family: var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+    .stat-value.brand   { color: var(--brand); }
+    .stat-value.success { color: var(--success); }
+    .stat-value.info    { color: var(--family); }
+    .stat-value.accent  { color: var(--accent); }
+
+    /* ── Table ─────────────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin: -22px; padding: 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-45);
+      padding: 12px 16px;
+      background: rgba(22, 25, 22, 0.5);
+      border-bottom: 1px solid var(--border);
+    }
+    th:first-child { padding-left: 22px; }
+    th:last-child  { padding-right: 22px; }
+    td {
+      padding: 11px 16px;
+      font-size: 12.5px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+    }
+    td:first-child { padding-left: 22px; }
+    td:last-child  { padding-right: 22px; }
+    tr:hover td    { background: rgba(22, 25, 22, 0.4); }
+
+    /* ── Badges (square, mono, low-alpha tinted) ────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .badge-pending    { background: rgba(251, 191, 36, 0.10);  color: var(--warn); }
+    .badge-dispatched { background: rgba(56, 189, 248, 0.10);  color: var(--info); }
+    .badge-running    { background: rgba(56, 189, 248, 0.10);  color: var(--info); }
+    .badge-done       { background: rgba(52, 211, 153, 0.10);  color: var(--success); }
+    .badge-failed     { background: rgba(248, 113, 113, 0.10); color: var(--danger); }
+    .badge-nemotron   { background: var(--brand-15);            color: var(--brand); }
+    .badge-claude     { background: rgba(61, 165, 255, 0.12);  color: var(--family); }
+
+    /* ── Burn bar ─────────────────────────────────────────────────────── */
+    .burn-bar-wrap { display: flex; flex-direction: column; gap: 11px; }
+    .burn-row { display: flex; align-items: center; gap: 12px; }
+    .burn-label { width: 130px; font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .burn-bar-bg { flex: 1; height: 4px; background: rgba(230, 240, 247, 0.06); }
+    .burn-bar-fill { height: 100%; background: linear-gradient(90deg, var(--brand), var(--family)); transition: width .4s ease; }
+    .burn-cost { width: 76px; text-align: right; font: 500 11px/1 var(--mono); color: var(--text-45); letter-spacing: 0.05em; }
+
+    /* ── Form ─────────────────────────────────────────────────────────── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-45);
+    }
+    input, select, textarea {
+      background: var(--surface-2);
+      border: 1px solid var(--border-2);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      width: 100%;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-15);
+    }
+    textarea { resize: vertical; min-height: 110px; font-family: var(--mono); }
+    select option { background: var(--surface-2); }
+
+    /* ── Buttons ─────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 9px 16px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background .15s, border-color .15s, color .15s, transform .05s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--brand); color: var(--bg); }
+    .btn-primary:hover { background: #4ee0a8; }
+    .btn-ghost   { background: transparent; color: var(--text-60); border-color: var(--border-2); }
+    .btn-ghost:hover { border-color: var(--brand); color: var(--brand); }
+
+    /* ── Token timeline ─────────────────────────────────────────────────── */
+    .timeline { display: flex; flex-direction: column; gap: 5px; }
+    .tl-row { display: flex; align-items: center; gap: 12px; }
+    .tl-day { width: 90px; font: 500 11px/1 var(--mono); color: var(--text-45); letter-spacing: 0.05em; }
+    .tl-bar-bg { flex: 1; height: 18px; background: rgba(230, 240, 247, 0.04); overflow: hidden; }
+    .tl-bar-fill { height: 100%; background: linear-gradient(90deg, var(--brand) 0%, var(--family) 100%); transition: width .3s ease; }
+    .tl-val { width: 130px; font: 500 11px/1 var(--mono); text-align: right; color: var(--text-60); letter-spacing: 0.05em; }
+
+    /* ── Brain shop · stat strip + adapter cards ────────────────────────── */
+    .brain-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    @media (max-width: 700px) { .brain-strip { grid-template-columns: repeat(2, 1fr); } }
+    .brain-strip-cell { background: var(--surface); padding: 16px 18px; }
+    .brain-strip-cell .label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-45);
+    }
+    .brain-strip-cell .value {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 200;
+      color: var(--text);
+      margin-top: 10px;
+      letter-spacing: -0.01em;
+    }
+    .brain-strip-cell .value .unit { font-size: 12px; color: var(--text-60); margin-left: 4px; letter-spacing: 0; }
+
+    .adapter-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      margin-bottom: 28px;
+    }
+    @media (max-width: 900px) { .adapter-grid { grid-template-columns: 1fr; } }
+
+    .adapter-card {
+      background: var(--surface);
+      padding: 22px;
+      display: flex; flex-direction: column;
+      position: relative;
+      transition: background .15s;
+    }
+    .adapter-card:hover { background: rgba(22, 25, 22, 0.5); }
+    .adapter-card .ac-tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-45);
+      margin-bottom: 6px;
+    }
+    .adapter-card .ac-name {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      line-height: 1;
+    }
+    .adapter-card.taifoon    .ac-name { color: var(--brand); }
+    .adapter-card.polymarket .ac-name { color: var(--accent); }
+    .adapter-card.algotrada  .ac-name { color: var(--family); }
+
+    .adapter-card .ac-status {
+      position: absolute;
+      top: 22px; right: 22px;
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .ac-status.live    { background: rgba(52, 211, 153, 0.10); color: var(--brand); }
+    .ac-status.live::before    { content: '●'; }
+    .ac-status.standby { background: rgba(230, 240, 247, 0.06); color: var(--text-45); }
+    .ac-status.standby::before { content: '○'; }
+    .ac-status.offline { background: rgba(248, 113, 113, 0.10); color: var(--danger); }
+    .ac-status.offline::before { content: '●'; }
+
+    .adapter-card .ac-desc {
+      color: var(--text-60);
+      font-size: 13px;
+      line-height: 1.55;
+      margin-top: 14px;
+      min-height: 60px;
+    }
+
+    .adapter-card .ac-specs {
+      margin-top: 18px;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .adapter-card .ac-spec {
+      display: flex; align-items: baseline; gap: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+    }
+    .adapter-card .ac-spec .key { color: var(--text-45); width: 88px; text-transform: uppercase; }
+    .adapter-card .ac-spec .val { color: var(--text); }
+
+    .adapter-card .ac-sample {
+      margin-top: 16px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      background: var(--surface-2);
+      border-left: 2px solid var(--border-2);
+      padding: 10px 12px;
+      line-height: 1.5;
+      color: var(--text-60);
+    }
+    .adapter-card.taifoon    .ac-sample { border-left-color: rgba(52, 211, 153, 0.5); }
+    .adapter-card.polymarket .ac-sample { border-left-color: rgba(244, 114, 182, 0.5); }
+    .adapter-card.algotrada  .ac-sample { border-left-color: rgba(61, 165, 255, 0.5); }
+
+    .adapter-card .ac-try {
+      margin-top: 16px;
+      align-self: flex-start;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 7px 12px;
+      border: 1px solid var(--border-2);
+      background: transparent;
+      cursor: pointer;
+      color: var(--text-60);
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .adapter-card.taifoon    .ac-try:hover { color: var(--brand);  border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.06); }
+    .adapter-card.polymarket .ac-try:hover { color: var(--accent); border-color: rgba(244, 114, 182, 0.4); background: rgba(244, 114, 182, 0.06); }
+    .adapter-card.algotrada  .ac-try:hover { color: var(--family); border-color: rgba(61, 165, 255, 0.4); background: rgba(61, 165, 255, 0.06); }
+
+    /* ── Adapter chip selector for the try-a-prompt card ──────────────────── */
+    .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+    .chip {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      border: 1px solid var(--border-2);
+      background: transparent;
+      cursor: pointer;
+      color: var(--text-60);
+      transition: all .15s;
+    }
+    .chip:hover { color: var(--text); border-color: var(--text-30); }
+    .chip.active.taifoon    { background: rgba(52, 211, 153, 0.10); color: var(--brand);  border-color: rgba(52, 211, 153, 0.4); }
+    .chip.active.polymarket { background: rgba(244, 114, 182, 0.10); color: var(--accent); border-color: rgba(244, 114, 182, 0.4); }
+    .chip.active.algotrada  { background: rgba(61, 165, 255, 0.10); color: var(--family); border-color: rgba(61, 165, 255, 0.4); }
+
+    /* ── Toast ─────────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      padding: 12px 18px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      max-width: 340px;
+      transform: translateY(120%); opacity: 0;
+      transition: transform .3s ease, opacity .2s; z-index: 9999;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: rgba(52, 211, 153, 0.5); color: var(--success); }
+    #toast.error   { border-color: rgba(248, 113, 113, 0.5); color: var(--danger); }
+
+    /* ── Empty + utils ─────────────────────────────────────────────────── */
+    .empty {
+      text-align: center;
+      padding: 48px 0;
+      color: var(--text-30);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .mb16 { margin-bottom: 16px; } .mb24 { margin-bottom: 24px; }
+    .flex { display: flex; align-items: center; gap: 12px; }
+    .spacer { flex: 1; }
+
+    /* Inline mono code */
+    code {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: rgba(230, 240, 247, 0.06);
+      padding: 2px 6px;
+      color: var(--text);
+    }
+
+    /* ── Locked feature panels ──────────────────────────────────────────── */
+    .lock-panel {
+      border: 1px solid var(--border-2);
+      background: var(--surface);
+      padding: 32px 28px;
+      max-width: 640px;
+      position: relative;
+      overflow: hidden;
+    }
+    .lock-panel::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(61, 165, 255, 0.04), transparent 60%);
+      pointer-events: none;
+    }
+    .lock-panel-mark {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--family);
+      margin-bottom: 18px;
+    }
+    .lock-panel-mark::before { content: '['; color: var(--family); }
+    .lock-panel-mark::after  { content: ']'; color: var(--family); }
+    .lock-panel h3 {
+      font-size: 20px; font-weight: 600;
+      letter-spacing: -0.005em;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    .lock-panel > p {
+      color: var(--text-60);
+      font-size: 13px; line-height: 1.6;
+      margin-bottom: 6px;
+      position: relative;
+    }
+    .lock-panel .lock-options {
+      display: flex; flex-direction: column; gap: 14px;
+      margin-top: 18px;
+      border-top: 1px solid var(--border);
+      padding-top: 18px;
+      position: relative;
+    }
+    .lock-panel .lock-option {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 13px;
+      color: var(--text-60);
+      line-height: 1.55;
+    }
+    .lock-panel .lock-option .arrow {
+      color: var(--brand);
+      font-family: var(--mono);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .lock-panel .lock-option .arrow.fam { color: var(--family); }
+    .lock-panel .lock-option strong { color: var(--text); font-weight: 600; }
+    .lock-panel .lock-option code { font-size: 11px; }
+    .lock-panel .lock-cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 22px;
+      padding: 9px 16px;
+      background: rgba(61, 165, 255, 0.08);
+      color: var(--family);
+      border: 1px solid rgba(61, 165, 255, 0.30);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      transition: background .15s, border-color .15s;
+      position: relative;
+    }
+    .lock-panel .lock-cta:hover {
+      background: rgba(61, 165, 255, 0.16);
+      border-color: rgba(61, 165, 255, 0.55);
+    }
+
+    /* Tiny nav indicator when a feature is locked */
+    nav button.locked::after {
+      content: '▲';
+      margin-left: 6px;
+      color: var(--family);
+      font-size: 9px;
+      opacity: 0.55;
+      letter-spacing: 0;
+    }
+    body.intel-on nav button.locked::after { display: none; }
+
+    /* Nemotron GPU stat — subtle "Connect Intel" hint when zero */
+    .stat-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--family);
+      transition: color .15s;
+    }
+    .stat-cta:hover { color: var(--brand); }
+
+    /* ── Auth toolbar pill ──────────────────────────────────────────────── */
+    .auth-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      border: 1px solid var(--border-2);
+      background: transparent;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .auth-pill .icon { font-size: 9px; opacity: 0.85; }
+    /* OPEN — env not set, dev mode (warn) */
+    .auth-pill.is-open    { color: var(--warn); border-color: rgba(251, 191, 36, 0.40); }
+    .auth-pill.is-open:hover    { background: rgba(251, 191, 36, 0.08); }
+    /* GUARDED — env set, signed out */
+    .auth-pill.is-guarded { color: var(--text-60); }
+    .auth-pill.is-guarded:hover { color: var(--family); border-color: rgba(61, 165, 255, 0.45); background: rgba(61, 165, 255, 0.06); }
+    /* SIGNED_IN — env set, valid header */
+    .auth-pill.is-signed-in { color: var(--brand); border-color: rgba(52, 211, 153, 0.45); background: rgba(52, 211, 153, 0.06); }
+    .auth-pill.is-signed-in:hover { background: rgba(52, 211, 153, 0.14); }
+
+    /* ── Task detail drawer ─────────────────────────────────────────────── */
+    .drawer-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(3px);
+      z-index: 8000;
+      display: none;
+      justify-content: flex-end;
+    }
+    .drawer-backdrop.open { display: flex; animation: fadeIn 0.15s ease-out; }
+    .drawer {
+      background: var(--surface);
+      border-left: 1px solid var(--border-2);
+      width: min(680px, 92vw);
+      height: 100%;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .drawer-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .drawer-head-meta { display: flex; flex-direction: column; gap: 4px; }
+    .drawer-id { font-family: var(--mono); font-size: 11px; color: var(--text-45); }
+    .drawer-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .drawer-badges { display: flex; gap: 6px; margin-top: 2px; }
+    .drawer-close {
+      background: none; border: none; color: var(--text-45); cursor: pointer;
+      font-size: 18px; padding: 4px 8px; line-height: 1;
+    }
+    .drawer-close:hover { color: var(--text); }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 18px; }
+    .drawer-section-label {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+      color: var(--text-45); text-transform: uppercase; margin-bottom: 6px;
+    }
+    .drawer-pre {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 12px 14px;
+      font-family: var(--mono); font-size: 12px; line-height: 1.6;
+      color: var(--text-60);
+      white-space: pre-wrap; word-break: break-word;
+      max-height: 340px; overflow-y: auto;
+    }
+    .drawer-stats {
+      display: flex; gap: 20px; flex-wrap: wrap;
+    }
+    .drawer-stat { display: flex; flex-direction: column; gap: 3px; }
+    .drawer-stat-label { font-size: 10px; color: var(--text-45); font-family: var(--mono); letter-spacing: 0.1em; }
+    .drawer-stat-val { font-size: 13px; font-weight: 600; color: var(--text); }
+    .drawer-review-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 10px; font-family: var(--mono); letter-spacing: 0.08em;
+      background: rgba(52,211,153,0.08); color: var(--brand);
+      border: 1px solid rgba(52,211,153,0.25); border-radius: 3px;
+      padding: 2px 7px;
+    }
+    tr.task-row { cursor: pointer; }
+    tr.task-row:hover td { background: rgba(52,211,153,0.04); }
+
+    /* ── Sign-in modal ──────────────────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 9000;
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .modal-backdrop.open { display: flex; animation: fadeIn 0.18s ease-out; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      padding: 30px 28px 26px;
+      max-width: 460px;
+      width: 100%;
+      position: relative;
+    }
+    .modal-mark {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--family);
+      margin-bottom: 14px;
+    }
+    .modal-mark::before { content: '['; color: var(--family); }
+    .modal-mark::after  { content: ']'; color: var(--family); }
+    .modal h3 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      margin-bottom: 10px;
+    }
+    .modal > p {
+      color: var(--text-60);
+      font-size: 13px;
+      line-height: 1.55;
+      margin-bottom: 18px;
+    }
+    .modal .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .modal .modal-err {
+      color: var(--danger);
+      font-family: var(--mono);
+      font-size: 10.5px;
+      letter-spacing: 0.1em;
+      margin-top: 10px;
+      min-height: 18px;
+    }
+    .modal .close-x {
+      position: absolute; top: 12px; right: 12px;
+      background: transparent; border: none; cursor: pointer;
+      color: var(--text-45);
+      font-size: 14px; line-height: 1;
+      padding: 4px 6px;
+      transition: color .15s;
+    }
+    .modal .close-x:hover { color: var(--text); }
+
+    /* ── Inline card-gate (overlays the Try-a-prompt card when guarded) ─── */
+    .card-gate {
+      display: none;
+      position: absolute; inset: 0;
+      background: rgba(17, 20, 15, 0.94);
+      backdrop-filter: blur(2px);
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 32px 28px;
+    }
+    .card-gate-mark {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--family);
+      margin-bottom: 12px;
+    }
+    .card-gate-mark::before { content: '['; color: var(--family); }
+    .card-gate-mark::after  { content: ']'; color: var(--family); }
+    .card-gate p {
+      color: var(--text-60);
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+      max-width: 460px;
+    }
+    .card-gate .lock-cta {
+      cursor: pointer;
+    }
+
+    /* Toggle states based on body classes set by /api/auth/status */
+    body.guarded:not(.signed-in) .card-gate { display: flex; }
+
+    /* Nemotron-routing inline hint under the model dropdown on Submit */
+    .nemotron-hint {
+      display: none;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--family);
+      margin-top: 6px;
+      cursor: pointer;
+      transition: color .15s;
+    }
+    .nemotron-hint:hover { color: var(--brand); }
+    body.guarded:not(.signed-in).nemotron-selected .nemotron-hint { display: inline-block; }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    footer.app-footer {
+      border-top: 1px solid var(--border);
+      padding: 16px 24px;
+      margin-top: 32px;
+      color: var(--text-45);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    footer.app-footer a { color: var(--text-60); transition: color .15s; }
+    footer.app-footer a:hover { color: var(--brand); }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="brand" href="/" aria-label="open-mamba console">
+    <!-- smiley pixel-snake mamba — same mark as open-mamba.dev -->
+    <svg width="22" height="22" viewBox="0 0 64 64" shape-rendering="crispEdges" aria-hidden>
+      <rect x="6"  y="40" width="8" height="8" fill="#34D399" opacity="0.32"/>
+      <rect x="14" y="40" width="8" height="8" fill="#34D399" opacity="0.5"/>
+      <rect x="22" y="40" width="8" height="8" fill="#34D399" opacity="0.65"/>
+      <rect x="22" y="32" width="8" height="8" fill="#34D399" opacity="0.78"/>
+      <rect x="22" y="24" width="8" height="8" fill="#34D399" opacity="0.9"/>
+      <rect x="30" y="24" width="8" height="8" fill="#34D399"/>
+      <rect x="38" y="24" width="8" height="8" fill="#34D399"/>
+      <rect x="46" y="24" width="8" height="8" fill="#34D399"/>
+      <rect x="46" y="16" width="8" height="8" fill="#E6F0F7"/>
+      <rect x="48"   y="18" width="1.5" height="1.5" fill="#000"/>
+      <rect x="51.5" y="18" width="1.5" height="1.5" fill="#000"/>
+      <rect x="49"   y="21" width="3"   height="1"   fill="#000"/>
+    </svg>
+    <span class="brand-word">OPEN<span class="accent">-MAMBA</span></span>
+  </a>
+
+  <nav id="nav">
+    <button class="active" onclick="showPage('dashboard')">Dashboard</button>
+    <button onclick="showPage('tasks')">Tasks</button>
+    <button onclick="showPage('submit')">Submit</button>
+    <button onclick="showPage('analytics')">Analytics</button>
+    <button onclick="showPage('models')">Models</button>
+  </nav>
+
+  <div class="header-right">
+    <a class="upgrade" href="https://taifoon.io/products/taifoon-mamba" target="_blank" rel="noreferrer" title="Hosted Pro tier with cost-optimizer + SSO">
+      ▲ Upgrade to Taifoon Pro
+    </a>
+    <button class="auth-pill is-open" id="auth-pill" type="button" onclick="onAuthPillClick()" title="Auth status — click to sign in or out">
+      <span class="icon" id="auth-pill-icon">●</span>
+      <span id="auth-pill-text">AUTH: OPEN</span>
+    </button>
+    <span class="pill offline" id="health-pill" title="Engine health">
+      <span class="live-dot" id="health-dot"></span>
+      <span id="health-label">checking</span>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── DASHBOARD ── -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-head">
+      <div>
+        <div class="bracketed">DASHBOARD</div>
+        <div class="page-title">Token burn · agent activity · everything</div>
+        <div class="page-sub">Across every project, every agent, every model. Updated live as the worker dispatches.</div>
+      </div>
+      <div class="flex" style="gap:8px">
+        <button class="btn btn-ghost" onclick="loadDashboard()">↻ Refresh</button>
+        <button class="btn btn-primary" onclick="showPage('submit')">+ New Task</button>
+      </div>
+    </div>
+
+    <div class="grid-4">
+      <div class="card stat">
+        <div class="stat-label">Total Tasks</div>
+        <div class="stat-value brand" id="stat-tasks">—</div>
+        <div class="stat-sub">all time</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-label">Total Tokens</div>
+        <div class="stat-value info" id="stat-tokens">—</div>
+        <div class="stat-sub">in + out</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-label">Total Cost</div>
+        <div class="stat-value success" id="stat-cost">—</div>
+        <div class="stat-sub">USD · all agents</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-label">Nemotron GPU</div>
+        <div class="stat-value accent" id="stat-nemotron">—</div>
+        <div class="stat-sub" id="stat-nemotron-sub">free inference saved</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span>Burn by project</span><span class="right-meta">$</span></div>
+        <div class="burn-bar-wrap" id="project-burn"><div class="empty">loading…</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>Burn by agent</span><span class="right-meta">$</span></div>
+        <div class="burn-bar-wrap" id="agent-burn"><div class="empty">loading…</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>30-day token timeline</span></div>
+      <div class="timeline" id="daily-timeline"><div class="empty">loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ── TASKS ── -->
+  <div class="page" id="page-tasks">
+    <div class="page-head">
+      <div>
+        <div class="bracketed">TASK QUEUE</div>
+        <div class="page-title">All envelopes</div>
+        <div class="page-sub">Source · agent · model · status · chain anchor.</div>
+      </div>
+      <div class="flex" style="gap:8px">
+        <select id="filter-status" onchange="loadTasks()" style="width:160px">
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="dispatched">Dispatched</option>
+          <option value="running">Running</option>
+          <option value="done">Done</option>
+          <option value="failed">Failed</option>
+        </select>
+        <button class="btn btn-ghost" onclick="loadTasks()">↻ Refresh</button>
+      </div>
+    </div>
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <div class="table-wrap" style="margin: 0;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Project</th>
+              <th>Agent</th>
+              <th>Model</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th style="text-align:right">Tokens</th>
+              <th style="text-align:right">Cost</th>
+              <th>Chain</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="task-tbody">
+            <tr><td colspan="10" class="empty">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SUBMIT ── -->
+  <div class="page" id="page-submit">
+    <div class="page-head">
+      <div>
+        <div class="bracketed">SUBMIT TASK</div>
+        <div class="page-title">Drop a TaskEnvelope on the bus</div>
+        <div class="page-sub">Routes to a Nemotron adapter or a Claude session, depending on model.</div>
+      </div>
+    </div>
+
+    <!-- Submit form is always available — base mamba (Claude / BYO) runs as
+         usual. Only `nemotron/*` model selections are gated; the inline hint
+         next to the model dropdown explains why and points to sign-in. -->
+    <div class="card" style="max-width: 740px;">
+      <form id="submit-form" onsubmit="submitTask(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Project</label>
+            <input id="f-project" type="text" placeholder="spinner" required />
+          </div>
+          <div class="form-group">
+            <label>Agent</label>
+            <select id="f-agent">
+              <option value="coder">coder · code-deliverer</option>
+              <option value="devops-lead">devops-lead · deployer</option>
+              <option value="code-reviewer">code-reviewer · auditor</option>
+              <option value="planner">planner</option>
+              <option value="taifoon-intel">taifoon-intel · protocol</option>
+              <option value="market-intel">market-intel · polymarket</option>
+              <option value="algo-trader">algo-trader</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Model</label>
+            <select id="f-model" onchange="onModelChange()">
+              <option value="claude-sonnet-4-6">claude-sonnet-4-6</option>
+              <option value="claude-opus-4-7">claude-opus-4-7</option>
+              <option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
+              <option value="nemotron/taifoon">nemotron/taifoon · taifoon-intel · ▲</option>
+              <option value="nemotron/polymarket">nemotron/polymarket · taifoon-intel · ▲</option>
+              <option value="nemotron/algotrada">nemotron/algotrada · taifoon-intel · ▲</option>
+            </select>
+            <a class="nemotron-hint" id="nemotron-hint" onclick="openSignIn()">▲ Sign in with grid key to route to nemotron</a>
+          </div>
+          <div class="form-group">
+            <label>Skill (optional)</label>
+            <input id="f-skill" type="text" placeholder="fix-collector" />
+          </div>
+          <div class="form-group">
+            <label>Priority (1 = high)</label>
+            <input id="f-priority" type="number" value="5" min="1" max="10" />
+          </div>
+          <div class="form-group">
+            <label>Source</label>
+            <select id="f-source">
+              <option value="api">API</option>
+              <option value="claude-desktop">Claude Desktop</option>
+              <option value="claude-opus">Claude Opus</option>
+              <option value="cron">Cron</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label>Payload</label>
+            <textarea id="f-payload" placeholder="Describe the task…" required></textarea>
+          </div>
+        </div>
+        <div style="margin-top: 18px; display: flex; gap: 12px; align-items: center; border-top: 1px solid var(--border); padding-top: 18px;">
+          <button type="submit" class="btn btn-primary" id="submit-btn">$ SUBMIT_TASK</button>
+          <span id="submit-result" style="font-size:11px;letter-spacing:0.1em;font-family:var(--mono);color:var(--text-45)"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── ANALYTICS ── -->
+  <div class="page" id="page-analytics">
+    <div class="page-head">
+      <div>
+        <div class="bracketed">ANALYTICS</div>
+        <div class="page-title">DuckDB token + cost analytics</div>
+        <div class="page-sub">All time · all agents · all projects. Queryable with plain SQL on disk.</div>
+      </div>
+    </div>
+
+    <div class="card mb24">
+      <div class="card-title"><span>Global consumption</span></div>
+      <div id="analytics-global"><div class="empty">loading…</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span>Per project</span></div>
+        <div id="analytics-projects"><div class="empty">loading…</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>Per agent × model</span></div>
+        <div id="analytics-agents"><div class="empty">loading…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODELS ── -->
+  <div class="page" id="page-models">
+    <div class="page-head">
+      <div>
+        <div class="bracketed">NEMOTRON ADAPTERS</div>
+        <div class="page-title">The brain shop</div>
+        <div class="page-sub">Three QLoRA adapters fine-tuned on NVIDIA Nemotron-3-Nano-4B-BF16. Routed from <code>/ingest</code> via <code>nemotron/&lt;name&gt;</code>, served at <code>NEMOTRON_BASE_URL</code>.</div>
+      </div>
+    </div>
+
+    <!-- Stat strip — taifoon-intel spec at-a-glance -->
+    <div class="brain-strip">
+      <div class="brain-strip-cell">
+        <div class="label">Adapters</div>
+        <div class="value">3</div>
+      </div>
+      <div class="brain-strip-cell">
+        <div class="label">Base Params</div>
+        <div class="value">2.1<span class="unit">B</span></div>
+      </div>
+      <div class="brain-strip-cell">
+        <div class="label">Avg Throughput</div>
+        <div class="value">0.74<span class="unit">tok/s</span></div>
+      </div>
+      <div class="brain-strip-cell">
+        <div class="label">vs Claude Opus</div>
+        <div class="value">−95<span class="unit">% cost</span></div>
+      </div>
+    </div>
+
+    <!-- Adapter cards — color-coded, with sample prompt + try button -->
+    <div class="adapter-grid">
+      <div class="adapter-card taifoon">
+        <span class="ac-status standby" id="ac-status-taifoon">standby</span>
+        <span class="ac-tag">QLoRA · r=16</span>
+        <span class="ac-name">taifoon</span>
+        <p class="ac-desc">Cross-chain protocol intel. V5 finality, solver economics, rollup proof formats. Trained on 4.2M tokens of internal protocol corpus.</p>
+        <div class="ac-specs">
+          <div class="ac-spec"><span class="key">throughput</span><span class="val">0.74 tok/s</span></div>
+          <div class="ac-spec"><span class="key">latency</span><span class="val">~32 tok</span></div>
+          <div class="ac-spec"><span class="key">precision</span><span class="val">BF16</span></div>
+        </div>
+        <div class="ac-sample">"What is the Taifoon V5 proof format?"</div>
+        <button class="ac-try" type="button" onclick="loadAdapter('taifoon')">try this →</button>
+      </div>
+
+      <div class="adapter-card polymarket">
+        <span class="ac-status standby" id="ac-status-polymarket">standby</span>
+        <span class="ac-tag">QLoRA · r=16</span>
+        <span class="ac-name">polymarket</span>
+        <p class="ac-desc">15-minute crypto price predictions and market sentiment. Trained on Polymarket settlement history plus exchange order flow.</p>
+        <div class="ac-specs">
+          <div class="ac-spec"><span class="key">throughput</span><span class="val">0.71 tok/s</span></div>
+          <div class="ac-spec"><span class="key">latency</span><span class="val">~28 tok</span></div>
+          <div class="ac-spec"><span class="key">precision</span><span class="val">BF16</span></div>
+        </div>
+        <div class="ac-sample">"BTC/USD 15-minute prediction with confidence."</div>
+        <button class="ac-try" type="button" onclick="loadAdapter('polymarket')">try this →</button>
+      </div>
+
+      <div class="adapter-card algotrada">
+        <span class="ac-status standby" id="ac-status-algotrada">standby</span>
+        <span class="ac-tag">QLoRA · r=16</span>
+        <span class="ac-name">algotrada</span>
+        <p class="ac-desc">Cross-DEX arbitrage scout. Spread detection, gas-aware path planning. Trained on Uniswap, Curve, and Balancer trace data.</p>
+        <div class="ac-specs">
+          <div class="ac-spec"><span class="key">throughput</span><span class="val">0.69 tok/s</span></div>
+          <div class="ac-spec"><span class="key">latency</span><span class="val">~24 tok</span></div>
+          <div class="ac-spec"><span class="key">precision</span><span class="val">BF16</span></div>
+        </div>
+        <div class="ac-sample">"ETH/USDC cross-DEX arbitrage opportunity?"</div>
+        <button class="ac-try" type="button" onclick="loadAdapter('algotrada')">try this →</button>
+      </div>
+    </div>
+
+    <!-- Try-a-prompt — gated: spends GPU per call, so requires sign-in when
+         TAIFOON_GRID_KEY is configured. Frontend toggles `body.signed-in` to
+         lift the gate; backend enforces independently. -->
+    <div class="card guarded-card" id="try-card" style="position: relative;">
+      <div class="card-title"><span>Try a prompt</span></div>
+
+      <div class="chip-row">
+        <button type="button" class="chip taifoon active"  data-adapter="taifoon"    onclick="setAdapter('taifoon')">taifoon</button>
+        <button type="button" class="chip polymarket"      data-adapter="polymarket" onclick="setAdapter('polymarket')">polymarket</button>
+        <button type="button" class="chip algotrada"       data-adapter="algotrada"  onclick="setAdapter('algotrada')">algotrada</button>
+      </div>
+
+      <input type="hidden" id="try-model" value="taifoon" />
+
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Prompt</label>
+          <textarea id="try-prompt" rows="3" placeholder="Ask something about the Taifoon protocol…">What is the Taifoon V5 proof format?</textarea>
+        </div>
+        <div class="form-group">
+          <label>Max tokens</label>
+          <input id="try-tokens" type="number" value="40" min="5" max="200" />
+        </div>
+        <div class="form-group">
+          <label>Temperature</label>
+          <input id="try-temp" type="number" value="0.2" min="0" max="1" step="0.1" />
+        </div>
+      </div>
+
+      <div style="font-family:var(--mono); font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color: var(--text-45); margin-top: 12px;">
+        ⚡ GPU INFERENCE ~0.74 TOK/S · 20 TOKENS ≈ 27S · COSTS GPU PER CALL
+      </div>
+      <button class="btn btn-primary" style="margin-top: 14px;" id="try-run-btn" onclick="tryPrompt()">$ RUN_INFERENCE</button>
+      <div id="try-result" style="margin-top: 18px; font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: pre-wrap; background: var(--surface-2); padding: 14px; display: none; line-height: 1.55; border: 1px solid var(--border-2);"></div>
+
+      <!-- Inline gate — only visible when guarded + signed-out. -->
+      <div class="card-gate" id="try-card-gate">
+        <div class="card-gate-mark">Locked · Sign in to run</div>
+        <p>Running prompts against the Taifoon-hosted adapters spends GPU per token. Sign in with your <code>x-grid-key</code> to unlock the prompt tester. <strong>open-mamba</strong> works fully without it — only the managed GPU path is gated.</p>
+        <button class="lock-cta" onclick="openSignIn()" type="button">▲ Sign In With Grid Key</button>
+      </div>
+    </div>
+
+    <!-- Footer cross-link to taifoon-intel marketing page -->
+    <div style="margin-top: 32px; text-align: center;">
+      <a href="https://taifoon.io/products/taifoon-intel" target="_blank" rel="noreferrer" class="btn-link">FULL BENCHMARKS · TAIFOON.IO/PRODUCTS/TAIFOON-INTEL ↗</a>
+    </div>
+  </div>
+
+</main>
+
+<footer class="app-footer">
+  <div>
+    <span style="color: var(--text)">open-mamba v0.1</span>
+    <span style="margin: 0 10px; opacity: .35">·</span>
+    <span>MIT_LICENSED · SELF_HOSTED · NO_TELEMETRY</span>
+  </div>
+  <div>
+    <a href="https://github.com/yawningmonsoon/open-mamba" target="_blank" rel="noreferrer">GITHUB ↗</a>
+    <span style="margin: 0 10px; opacity: .35">·</span>
+    <a href="https://open-mamba.dev" target="_blank" rel="noreferrer">OPEN-MAMBA.DEV ↗</a>
+    <span style="margin: 0 10px; opacity: .35">·</span>
+    <a href="https://taifoon.io" target="_blank" rel="noreferrer">TAIFOON.IO ↗</a>
+  </div>
+</footer>
+
+<!-- Sign-in modal — opens from the topbar pill or any sign-in CTA. -->
+<div class="modal-backdrop" id="signin-modal" onclick="if(event.target===this)closeSignIn()">
+  <div class="modal" role="dialog" aria-labelledby="signin-title">
+    <button class="close-x" onclick="closeSignIn()" aria-label="Close" type="button">✕</button>
+    <span class="modal-mark">Sign In · Grid Key</span>
+    <h3 id="signin-title">Unlock nemotron routing</h3>
+    <p>Paste your Taifoon grid key. It's stored only in this browser's local storage and stamped on every API request as <code>x-grid-key</code>. The engine validates it server-side against the configured <code>TAIFOON_GRID_KEY</code> env var — never echoed back.</p>
+    <form onsubmit="submitSignIn(event)">
+      <label for="signin-key">Grid key</label>
+      <input id="signin-key" class="input" type="password" placeholder="••••••••••••" required autocomplete="off" spellcheck="false" style="font-family:var(--mono); margin-top:6px;" />
+      <div class="modal-err" id="signin-err"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" type="submit">$ SIGN_IN</button>
+        <button class="btn btn-ghost" type="button" onclick="closeSignIn()">CANCEL</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Task detail drawer -->
+<div class="drawer-backdrop" id="task-drawer" onclick="if(event.target===this)closeDrawer()">
+  <div class="drawer">
+    <div class="drawer-head">
+      <div class="drawer-head-meta">
+        <div class="drawer-id" id="drawer-id">—</div>
+        <div class="drawer-title" id="drawer-project">—</div>
+        <div class="drawer-badges" id="drawer-badges"></div>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-stats" id="drawer-stats"></div>
+      <div>
+        <div class="drawer-section-label">Payload</div>
+        <div class="drawer-pre" id="drawer-payload">—</div>
+      </div>
+      <div id="drawer-response-wrap">
+        <div class="drawer-section-label">Response</div>
+        <div class="drawer-pre" id="drawer-response">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = '';  // same origin
+
+// ── Grid key (localStorage) ──────────────────────────────────────────────────
+const GRID_KEY_STORAGE = 'taifoon.grid_key';
+function getKey()      { try { return localStorage.getItem(GRID_KEY_STORAGE) || ''; } catch { return ''; } }
+function setKey(k)     { try { localStorage.setItem(GRID_KEY_STORAGE, k); } catch {} }
+function clearKey()    { try { localStorage.removeItem(GRID_KEY_STORAGE); } catch {} }
+
+// All requests go through this so x-grid-key gets stamped automatically.
+async function apiFetch(path, init) {
+  const opts = init || {};
+  const headers = new Headers(opts.headers || {});
+  const key = getKey();
+  if (key) headers.set('x-grid-key', key);
+  return fetch(API + path, { ...opts, headers });
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  [...document.querySelectorAll('nav button')].find(b => b.textContent.toLowerCase().includes(name.split('-')[0]))?.classList.add('active');
+  stopTaskPoll();
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'tasks')     startTaskPoll();
+  if (name === 'analytics') loadAnalytics();
+  if (name === 'models')    loadModelHealth();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => t.className = '', 3000);
+}
+
+// ── Fetch helpers ─────────────────────────────────────────────────────────────
+async function api(path) {
+  const r = await apiFetch(path);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── Health ────────────────────────────────────────────────────────────────────
+async function checkHealth() {
+  const pill  = document.getElementById('health-pill');
+  const label = document.getElementById('health-label');
+  try {
+    await api('/health');
+    pill.classList.remove('offline');
+    label.textContent = 'engine online';
+  } catch {
+    pill.classList.add('offline');
+    label.textContent = 'engine offline';
+  }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const [global, projects, agents, daily] = await Promise.all([
+      api('/api/analytics/global'),
+      api('/api/analytics/projects'),
+      api('/api/analytics/agents'),
+      api('/api/analytics/daily'),
+    ]);
+
+    document.getElementById('stat-tasks').textContent  = fmt(global.total_tasks);
+    document.getElementById('stat-tokens').textContent = fmtTokens(global.total_tokens);
+    document.getElementById('stat-cost').textContent   = '$' + global.total_cost_usd.toFixed(4);
+
+    const nemotronTasks = (agents || []).filter(a => a.model?.startsWith('nemotron'));
+    const saved = nemotronTasks.reduce((s, a) => s + a.tasks * 0.002, 0);
+    const stat = document.getElementById('stat-nemotron');
+    const sub  = document.getElementById('stat-nemotron-sub');
+    if (saved > 0) {
+      stat.textContent = '$' + saved.toFixed(3);
+      if (sub) sub.textContent = 'free inference saved';
+    } else {
+      // Subtle nudge — no intel wired in, no saving yet.
+      stat.textContent = '—';
+      if (sub) sub.innerHTML = '<a href="https://taifoon.io/products/taifoon-intel" target="_blank" rel="noreferrer" class="stat-cta">▲ Connect Intel ↗</a>';
+    }
+
+    renderBurnBars('project-burn', (projects || []).map(p => ({ label: p.project, cost: p.cost_usd })));
+    renderBurnBars('agent-burn',   (agents   || []).map(a => ({ label: a.agent_slug, cost: a.cost_usd })));
+    renderTimeline('daily-timeline', daily || []);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function renderBurnBars(elId, items) {
+  const el = document.getElementById(elId);
+  if (!items.length) { el.innerHTML = '<div class="empty">no data yet</div>'; return; }
+  const max = Math.max(...items.map(i => i.cost), 0.0001);
+  el.innerHTML = items.slice(0, 10).map(i => `
+    <div class="burn-row">
+      <div class="burn-label" title="${i.label}">${i.label}</div>
+      <div class="burn-bar-bg"><div class="burn-bar-fill" style="width:${(i.cost / max * 100).toFixed(1)}%"></div></div>
+      <div class="burn-cost">$${i.cost.toFixed(4)}</div>
+    </div>`).join('');
+}
+
+function renderTimeline(elId, days) {
+  const el = document.getElementById(elId);
+  if (!days.length) { el.innerHTML = '<div class="empty">no data yet</div>'; return; }
+  const max = Math.max(...days.map(d => d.tokens), 1);
+  el.innerHTML = days.slice(0, 14).map(d => `
+    <div class="tl-row">
+      <div class="tl-day">${d.day}</div>
+      <div class="tl-bar-bg"><div class="tl-bar-fill" style="width:${(d.tokens / max * 100).toFixed(1)}%"></div></div>
+      <div class="tl-val">${fmtTokens(d.tokens)} · $${d.cost_usd.toFixed(3)}</div>
+    </div>`).join('');
+}
+
+// ── Tasks ─────────────────────────────────────────────────────────────────────
+let _taskPollTimer = null;
+
+function renderTaskRow(t) {
+  const tokens = (t.tokens_in || 0) + (t.tokens_out || 0);
+  const esc = s => String(s || '').replace(/'/g, "\\'");
+  return `<tr class="task-row" onclick="openDrawer('${esc(t.id)}')">
+    <td style="font-size:11px" title="${t.id}">${t.id.slice(0, 8)}…</td>
+    <td>${t.project}</td>
+    <td style="font-size:11px;color:var(--text-45)">${t.assigned_agent}</td>
+    <td><span class="badge ${t.model?.startsWith('nemotron') ? 'badge-nemotron' : 'badge-claude'}">${t.model?.split('/').pop()}</span></td>
+    <td style="text-align:center">${t.priority}</td>
+    <td><span class="badge badge-${t.status}">${t.status}</span></td>
+    <td style="text-align:right">${tokens ? fmtTokens(tokens) : '—'}</td>
+    <td style="text-align:right">${t.cost_usd != null ? '$' + Number(t.cost_usd).toFixed(4) : '—'}</td>
+    <td>${t.chain_tx ? `<a href="https://taifoon.io/tx/${t.chain_tx}" target="_blank" style="color:var(--family);font-size:11px" onclick="event.stopPropagation()">⛓ ${t.chain_tx.slice(0, 10)}</a>` : '—'}</td>
+    <td style="font-size:11px;color:var(--text-45)">${(t.created_at || '').slice(0, 16) || '—'}</td>
+  </tr>`;
+}
+
+// ── Task detail drawer ────────────────────────────────────────────────────────
+async function openDrawer(id) {
+  const drawer = document.getElementById('task-drawer');
+  drawer.classList.add('open');
+  document.getElementById('drawer-id').textContent = id.slice(0, 8) + '…';
+  document.getElementById('drawer-project').textContent = 'loading…';
+  document.getElementById('drawer-payload').textContent = '…';
+  document.getElementById('drawer-response').textContent = '…';
+  document.getElementById('drawer-stats').innerHTML = '';
+  document.getElementById('drawer-badges').innerHTML = '';
+
+  try {
+    const t = await api('/api/tasks/' + id);
+    document.getElementById('drawer-id').textContent = t.id;
+    document.getElementById('drawer-project').textContent = t.project + ' / ' + t.assigned_agent;
+
+    // badges
+    const autoReview = t.assigned_agent === 'coder' || t.assigned_agent === 'devops-lead';
+    document.getElementById('drawer-badges').innerHTML =
+      `<span class="badge badge-${t.status}">${t.status}</span>` +
+      `<span class="badge ${t.model?.startsWith('nemotron') ? 'badge-nemotron' : 'badge-claude'}">${t.model?.split('/').pop()}</span>` +
+      (autoReview ? `<span class="drawer-review-badge">✓ auto-review</span>` : '');
+
+    // stats
+    const tokens = (t.tokens_in || 0) + (t.tokens_out || 0);
+    document.getElementById('drawer-stats').innerHTML = [
+      ['Priority', t.priority ?? '—'],
+      ['Tokens', tokens ? fmtTokens(tokens) : '—'],
+      ['Cost', t.cost_usd != null ? '$' + Number(t.cost_usd).toFixed(5) : '—'],
+      ['Created', (t.created_at || '').slice(0, 16) || '—'],
+      ['Completed', (t.completed_at || '').slice(0, 16) || '—'],
+    ].map(([l, v]) =>
+      `<div class="drawer-stat"><div class="drawer-stat-label">${l}</div><div class="drawer-stat-val">${v}</div></div>`
+    ).join('');
+
+    // payload — try to pretty-print if JSON
+    let payload = t.payload || '—';
+    try {
+      const parsed = JSON.parse(payload);
+      // surface the human-readable template or initial_input if it's a workflow payload
+      if (parsed.template) payload = parsed.template;
+      else if (parsed.__workflow) payload = JSON.stringify(parsed, null, 2);
+    } catch {}
+    document.getElementById('drawer-payload').textContent = payload;
+
+    // response
+    const resp = t.response || (t.status === 'pending' || t.status === 'running' ? '(in progress…)' : '(no response yet)');
+    document.getElementById('drawer-response').textContent = resp;
+    document.getElementById('drawer-response-wrap').style.display = resp ? '' : 'none';
+  } catch(e) {
+    document.getElementById('drawer-project').textContent = 'error: ' + e.message;
+  }
+}
+
+function closeDrawer() {
+  document.getElementById('task-drawer').classList.remove('open');
+}
+
+// Esc closes drawer too
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeDrawer();
+});
+
+async function loadTasks(silent = false) {
+  const status = document.getElementById('filter-status').value;
+  const tbody  = document.getElementById('task-tbody');
+  let url = '/api/tasks?limit=200';
+  if (status) url += '&status=' + encodeURIComponent(status);
+  if (!silent) tbody.innerHTML = '<tr><td colspan="10" class="empty">loading…</td></tr>';
+  try {
+    const tasks = await api(url);
+    if (!Array.isArray(tasks) || !tasks.length) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">no tasks yet — submit one!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = tasks.map(renderTaskRow).join('');
+  } catch (e) {
+    if (!silent) tbody.innerHTML = `<tr><td colspan="10" class="empty">${e.message}</td></tr>`;
+  }
+}
+
+function startTaskPoll() { loadTasks(); _taskPollTimer = setInterval(() => loadTasks(true), 3000); }
+function stopTaskPoll()  { clearInterval(_taskPollTimer); _taskPollTimer = null; }
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+async function submitTask(e) {
+  e.preventDefault();
+  const btn    = document.getElementById('submit-btn');
+  const result = document.getElementById('submit-result');
+  btn.disabled = true;
+  result.textContent = 'submitting…';
+  try {
+    const body = {
+      project:        document.getElementById('f-project').value,
+      assigned_agent: document.getElementById('f-agent').value,
+      model:          document.getElementById('f-model').value,
+      skill:          document.getElementById('f-skill').value || undefined,
+      priority:       parseInt(document.getElementById('f-priority').value),
+      source:         document.getElementById('f-source').value,
+      payload:        document.getElementById('f-payload').value,
+    };
+    const r = await apiFetch('/ingest', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (r.status === 401) {
+      // Most likely a nemotron task in guarded mode without a valid key.
+      result.style.color = 'var(--family)';
+      result.textContent = '✗ ' + (data.error || 'sign in required for nemotron routing');
+      toast('Sign in to route to nemotron', 'error');
+      openSignIn();
+      btn.disabled = false;
+      return;
+    }
+    if (!r.ok) throw new Error(data.error || r.statusText);
+    result.style.color = 'var(--success)';
+    result.textContent = '✓ accepted · id ' + data.id;
+    toast('Task submitted: ' + data.id?.slice(0, 8), 'success');
+  } catch (e) {
+    result.style.color = 'var(--danger)';
+    result.textContent = '✗ ' + e.message;
+    toast(e.message, 'error');
+  }
+  btn.disabled = false;
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+async function loadAnalytics() {
+  try {
+    const [global, projects, agents] = await Promise.all([
+      api('/api/analytics/global'),
+      api('/api/analytics/projects'),
+      api('/api/analytics/agents'),
+    ]);
+
+    document.getElementById('analytics-global').innerHTML = `
+      <div class="grid-4" style="margin-bottom:0">
+        <div class="card stat"><div class="stat-label">Tasks</div><div class="stat-value brand">${fmt(global.total_tasks)}</div></div>
+        <div class="card stat"><div class="stat-label">Tokens In</div><div class="stat-value info">${fmtTokens(global.total_tokens_in)}</div></div>
+        <div class="card stat"><div class="stat-label">Tokens Out</div><div class="stat-value info">${fmtTokens(global.total_tokens_out)}</div></div>
+        <div class="card stat"><div class="stat-label">Total Cost</div><div class="stat-value success">$${global.total_cost_usd.toFixed(4)}</div></div>
+      </div>`;
+
+    const projHtml = (projects || []).slice(0, 20).map(p => `
+      <div class="burn-row">
+        <div class="burn-label">${p.project}</div>
+        <div class="burn-bar-bg"><div class="burn-bar-fill" style="width:${Math.min(100, (p.cost_usd / Math.max(...(projects || []).map(x => x.cost_usd), 0.001)) * 100).toFixed(0)}%"></div></div>
+        <div class="burn-cost">$${p.cost_usd.toFixed(4)}</div>
+      </div>`).join('');
+    document.getElementById('analytics-projects').innerHTML = projHtml || '<div class="empty">no data yet</div>';
+
+    const agentHtml = (agents || []).slice(0, 20).map(a => `
+      <div class="burn-row">
+        <div class="burn-label">${a.agent_slug}<br><span style="font-size:10px;color:var(--text-45);font-family:var(--mono);letter-spacing:0.1em">${a.model?.split('/').pop()}</span></div>
+        <div class="burn-bar-bg"><div class="burn-bar-fill" style="width:${Math.min(100, (a.cost_usd / Math.max(...(agents || []).map(x => x.cost_usd), 0.001)) * 100).toFixed(0)}%"></div></div>
+        <div class="burn-cost">$${a.cost_usd.toFixed(4)}</div>
+      </div>`).join('');
+    document.getElementById('analytics-agents').innerHTML = agentHtml || '<div class="empty">no data yet</div>';
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// ── Model health (status pills on the adapter cards) ─────────────────────────
+//
+// Three states:
+//   live    → adapter responded healthy. Mint pill with filled ●.
+//   standby → no NEMOTRON_BASE_URL configured (or endpoint unreachable). Muted ○.
+//             This is the default for a fresh local install — NOT an error.
+//   offline → endpoint configured but reachable health check failed. Coral ●.
+async function loadModelHealth() {
+  const set = (m, state) => {
+    const el = document.getElementById('ac-status-' + m);
+    if (!el) return;
+    el.className = 'ac-status ' + state;
+    el.textContent = state;
+  };
+  try {
+    const data = await api('/api/nemotron/health');
+    // If the API exists and reports any adapter as up, treat unreported ones as offline.
+    // If it reports nothing, treat the whole rig as standby.
+    const anyKnown = ['taifoon', 'polymarket', 'algotrada'].some(m => data[m] !== undefined);
+    ['taifoon', 'polymarket', 'algotrada'].forEach(m => {
+      if (!anyKnown) { set(m, 'standby'); return; }
+      set(m, data[m] ? 'live' : 'offline');
+    });
+  } catch {
+    // Health endpoint failed — show all as standby (not red), it's just unconfigured.
+    ['taifoon', 'polymarket', 'algotrada'].forEach(m => set(m, 'standby'));
+  }
+}
+
+// ── Adapter selector (chip row + sample-prompt presets) ──────────────────────
+const MODEL_PROMPTS = {
+  taifoon:    'What is the Taifoon V5 proof format?',
+  polymarket: 'What is your BTC/USD 15-minute price prediction?',
+  algotrada:  'Describe an ETH/USDC cross-DEX arbitrage opportunity.',
+};
+
+function setAdapter(name) {
+  document.getElementById('try-model').value = name;
+  document.querySelectorAll('.chip[data-adapter]').forEach(c => {
+    c.classList.toggle('active', c.dataset.adapter === name);
+  });
+  // Refresh the prompt only if the user hasn't typed anything custom.
+  const promptEl = document.getElementById('try-prompt');
+  if (promptEl && (!promptEl.dataset.userTouched || promptEl.value === '')) {
+    promptEl.value = MODEL_PROMPTS[name] || '';
+  }
+}
+
+function loadAdapter(name) {
+  setAdapter(name);
+  document.getElementById('try-prompt')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => document.getElementById('try-prompt')?.focus(), 240);
+}
+
+// Track whether the user has hand-edited the prompt; if so, swapping the
+// adapter chip won't clobber what they've written.
+document.getElementById('try-prompt').addEventListener('input', function () {
+  this.dataset.userTouched = '1';
+});
+
+async function tryPrompt() {
+  const model       = document.getElementById('try-model').value;
+  const prompt      = document.getElementById('try-prompt').value.trim();
+  const max_tokens  = parseInt(document.getElementById('try-tokens').value) || 40;
+  const temperature = parseFloat(document.getElementById('try-temp')?.value) || 0.2;
+  const res         = document.getElementById('try-result');
+  const btn         = document.getElementById('try-run-btn');
+  if (!prompt) return;
+
+  res.style.display = 'block';
+  btn.disabled = true;
+
+  const t0 = Date.now();
+  let elapsed = 0;
+  const timer = setInterval(() => {
+    elapsed = ((Date.now() - t0) / 1000).toFixed(0);
+    res.textContent = `generating… ${elapsed}s`;
+  }, 500);
+
+  try {
+    const r = await apiFetch('/api/nemotron/' + model + '/generate', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ prompt, max_tokens, temperature }),
+    });
+    clearInterval(timer);
+    if (r.status === 401) {
+      res.textContent = '✗ sign in with your grid key to run inference';
+      openSignIn();
+      return;
+    }
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || JSON.stringify(data));
+    const wall = ((Date.now() - t0) / 1000).toFixed(1);
+    res.textContent = data.response
+      + `\n\n— ${data.tokens} tokens · ${data.duration?.toFixed(1)}s inference · ${data.tokens_per_second?.toFixed(2)} t/s · ${wall}s wall`;
+  } catch (e) {
+    clearInterval(timer);
+    res.textContent = '✗ ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+function fmt(n) { return n == null ? '—' : Number(n).toLocaleString(); }
+function fmtTokens(n) {
+  if (n == null) return '—';
+  if (n > 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
+  if (n > 1_000)     return (n / 1_000).toFixed(1) + 'K';
+  return String(n);
+}
+
+// ── Auth state ───────────────────────────────────────────────────────────────
+//
+// The dashboard runs in three modes, driven by /api/auth/status:
+//   - OPEN       → TAIFOON_GRID_KEY env not set. Everything works, no sign-in.
+//   - GUARDED    → env set, no/invalid x-grid-key on this session.
+//                  Submit form is open for non-nemotron models; nemotron is
+//                  visibly hinted as locked; Models try-prompt is overlay-locked.
+//   - SIGNED_IN  → env set + valid x-grid-key. All gates lift.
+async function checkAuth() {
+  try {
+    const r = await apiFetch('/api/auth/status');
+    if (!r.ok) return;
+    const data = await r.json();
+    const guarded   = data.mode === 'guarded';
+    const signedIn  = !!data.signed_in;
+    document.body.classList.toggle('guarded',   guarded);
+    document.body.classList.toggle('signed-in', signedIn);
+    renderAuthPill(data.mode || 'open', signedIn);
+  } catch {
+    // Endpoint missing on older builds — show OPEN as the conservative dev default.
+    renderAuthPill('open', false);
+  }
+}
+
+function renderAuthPill(mode, signedIn) {
+  const pill = document.getElementById('auth-pill');
+  const text = document.getElementById('auth-pill-text');
+  const icon = document.getElementById('auth-pill-icon');
+  if (!pill) return;
+  pill.classList.remove('is-open', 'is-guarded', 'is-signed-in');
+  if (mode === 'open') {
+    pill.classList.add('is-open');
+    text.textContent = 'AUTH: OPEN';
+    icon.textContent = '●';
+    pill.title = 'No TAIFOON_GRID_KEY set on the engine — everything is unguarded. Set the env var to lock nemotron routing.';
+  } else if (signedIn) {
+    pill.classList.add('is-signed-in');
+    text.textContent = 'SIGNED_IN';
+    icon.textContent = '✓';
+    pill.title = 'Signed in with grid key. Click to sign out.';
+  } else {
+    pill.classList.add('is-guarded');
+    text.textContent = 'SIGN IN';
+    icon.textContent = '▲';
+    pill.title = 'Engine is guarded — sign in with your grid key to route to nemotron.';
+  }
+}
+
+// ── Sign-in modal ────────────────────────────────────────────────────────────
+function openSignIn() {
+  // No need to ask in OPEN mode.
+  if (!document.body.classList.contains('guarded')) {
+    toast('Engine is in open mode — no sign-in required', 'success');
+    return;
+  }
+  const m = document.getElementById('signin-modal');
+  m.classList.add('open');
+  setTimeout(() => document.getElementById('signin-key')?.focus(), 30);
+}
+function closeSignIn() {
+  document.getElementById('signin-modal')?.classList.remove('open');
+  document.getElementById('signin-err').textContent = '';
+}
+async function submitSignIn(e) {
+  e.preventDefault();
+  const input = document.getElementById('signin-key');
+  const err   = document.getElementById('signin-err');
+  err.textContent = '';
+  const k = (input.value || '').trim();
+  if (!k) { err.textContent = '✗ enter a key'; return; }
+
+  // Probe /api/auth/status with the candidate key. Backend reflects validity
+  // via `signed_in: true` — no separate validation endpoint needed.
+  try {
+    const r = await fetch(API + '/api/auth/status', {
+      headers: { 'x-grid-key': k },
+    });
+    const data = await r.json();
+    if (data && data.signed_in) {
+      setKey(k);
+      input.value = '';
+      closeSignIn();
+      toast('Signed in', 'success');
+      checkAuth();
+    } else {
+      err.textContent = '✗ invalid key — does not match TAIFOON_GRID_KEY';
+    }
+  } catch {
+    err.textContent = '✗ network error — try again';
+  }
+}
+function signOut() {
+  clearKey();
+  toast('Signed out', 'success');
+  checkAuth();
+}
+function onAuthPillClick() {
+  if (document.body.classList.contains('signed-in')) {
+    if (confirm('Sign out and clear the grid key from this browser?')) signOut();
+  } else if (document.body.classList.contains('guarded')) {
+    openSignIn();
+  } else {
+    toast('Engine is in open mode — no sign-in required', 'success');
+  }
+}
+
+// ── Submit dropdown ──────────────────────────────────────────────────────────
+function onModelChange() {
+  const v = document.getElementById('f-model').value || '';
+  document.body.classList.toggle('nemotron-selected', v.startsWith('nemotron/'));
+}
+
+// Esc closes the modal. Cmd/Ctrl-K opens sign-in.
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSignIn();
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault(); openSignIn();
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+checkHealth();
+setInterval(checkHealth, 15000);
+checkAuth();
+setInterval(checkAuth, 30000);
+onModelChange();   // sync nemotron-selected on first load
+loadDashboard();
+</script>
+</body>
+</html>

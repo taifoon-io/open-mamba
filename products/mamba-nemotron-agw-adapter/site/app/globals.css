@@ -1,0 +1,271 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ────────────────────────────────────────────────────────────────────────
+   Base
+   ──────────────────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    color-scheme: light dark;
+    --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.12  0 0 0 0 0.14  0 0 0 0 0.13  0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  /* Subtle paper grain — barely perceptible, gives the cream background depth */
+  body {
+    background-color: theme('colors.paper');
+    background-image: var(--grain);
+    background-size: 200px 200px;
+    color: theme('colors.ink');
+    font-family: theme('fontFamily.sans');
+    font-size: theme('fontSize.body[0]');
+    line-height: 1.55;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body {
+      background-color: theme('colors.dark-page');
+      color: theme('colors.dark-text');
+    }
+  }
+
+  h1, h2 {
+    font-family: theme('fontFamily.serif');
+    font-weight: 400;
+    color: theme('colors.ink');
+    text-wrap: balance;
+  }
+
+  h3, h4 {
+    font-family: theme('fontFamily.sans');
+    font-weight: 600;
+    color: theme('colors.ink');
+    text-wrap: balance;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    h1, h2, h3, h4 { color: theme('colors.dark-text'); }
+  }
+
+  a {
+    color: theme('colors.accent');
+    text-decoration: none;
+    transition: color theme('transitionDuration.fast') theme('transitionTimingFunction.ease');
+  }
+
+  a:hover {
+    color: theme('colors.accentDeep');
+  }
+
+  /* Sharper, more visible focus ring — accessibility forward */
+  *:focus-visible {
+    outline: 2px solid theme('colors.accent');
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  ::selection {
+    background-color: theme('colors.accentSoft');
+    color: theme('colors.ink');
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0ms !important;
+      scroll-behavior: auto !important;
+    }
+    html { scroll-behavior: auto; }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Component classes
+   ──────────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* ── Eyebrows ─────────────────────────────────────────────────────── */
+  .eyebrow {
+    font-size: theme('fontSize.eyebrow[0]');
+    line-height: 1.4;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: theme('colors.accent');
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .eyebrow::before {
+    content: "";
+    display: inline-block;
+    width: 1.25rem;
+    height: 1px;
+    background-color: theme('colors.accent');
+  }
+  .eyebrow.eyebrow-bronze { color: theme('colors.bronze'); }
+  .eyebrow.eyebrow-bronze::before { background-color: theme('colors.bronze'); }
+  .eyebrow.eyebrow-ember { color: theme('colors.ember'); }
+  .eyebrow.eyebrow-ember::before { background-color: theme('colors.ember'); }
+  .eyebrow.eyebrow-muted { color: theme('colors.inkMuted'); }
+  .eyebrow.eyebrow-muted::before { background-color: theme('colors.inkMuted'); }
+
+  /* ── Prose ────────────────────────────────────────────────────────── */
+  .prose-mamba {
+    @apply max-w-prose;
+  }
+  .prose-mamba p {
+    @apply mb-5 text-body text-inkSoft;
+  }
+  .prose-mamba > p:first-of-type {
+    /* lead paragraph */
+    font-size: 1.1875rem;
+    line-height: 1.6;
+    color: theme('colors.ink');
+  }
+  .prose-mamba h2 { @apply text-h2 mt-14 mb-5; }
+  .prose-mamba h3 { @apply text-h3 mt-10 mb-3; }
+  .prose-mamba h4 { @apply text-h4 mt-8 mb-2; }
+  .prose-mamba ul { @apply list-disc pl-6 mb-5 space-y-2 text-body text-inkSoft; }
+  .prose-mamba ol { @apply list-decimal pl-6 mb-5 space-y-2 text-body text-inkSoft; }
+  .prose-mamba code {
+    font-family: theme('fontFamily.mono');
+    font-size: 0.92em;
+    font-weight: 500;
+    padding: 0.125em 0.375em;
+    border-radius: theme('borderRadius.sm');
+    background-color: theme('colors.paperAlt');
+    color: theme('colors.ink');
+  }
+  .prose-mamba a {
+    @apply underline decoration-1 underline-offset-4;
+    text-decoration-color: theme('colors.accent');
+    text-decoration-thickness: 1px;
+  }
+  .prose-mamba a:hover { text-decoration-thickness: 2px; }
+  .prose-mamba blockquote {
+    @apply border-l-2 border-accent pl-5 italic text-inkSoft my-6;
+  }
+  .prose-mamba hr {
+    border: 0;
+    height: 1px;
+    background-color: theme('colors.line');
+    margin: 3rem 0;
+  }
+
+  /* ── Buttons ──────────────────────────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center justify-center font-sans font-semibold;
+    @apply rounded-md px-5 py-2.5 text-bodySm whitespace-nowrap;
+    transition:
+      background-color theme('transitionDuration.fast') theme('transitionTimingFunction.ease'),
+      color           theme('transitionDuration.fast') theme('transitionTimingFunction.ease'),
+      border-color    theme('transitionDuration.fast') theme('transitionTimingFunction.ease'),
+      transform       theme('transitionDuration.fast') theme('transitionTimingFunction.ease');
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn[disabled], .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-primary {
+    background-color: theme('colors.accent');
+    color: theme('colors.paper');
+  }
+  .btn-primary:hover { background-color: theme('colors.accentDeep'); color: theme('colors.paper'); }
+
+  .btn-secondary {
+    background-color: transparent;
+    color: theme('colors.ink');
+    border: 1px solid theme('colors.line');
+  }
+  .btn-secondary:hover { background-color: theme('colors.paperAlt'); border-color: theme('colors.ink'); }
+
+  .btn-ghost {
+    background-color: transparent;
+    color: theme('colors.inkSoft');
+  }
+  .btn-ghost:hover { color: theme('colors.ink'); background-color: theme('colors.paperAlt'); }
+
+  .btn-bronze {
+    background-color: transparent;
+    color: theme('colors.bronze');
+    border: 1px solid theme('colors.bronze');
+  }
+  .btn-bronze:hover { background-color: theme('colors.bronze'); color: theme('colors.paper'); }
+
+  /* ── Cards ─────────────────────────────────────────────────────────── */
+  .card {
+    background-color: #FFFFFF;
+    border: 1px solid theme('colors.lineSoft');
+    border-radius: theme('borderRadius.md');
+    padding: 1.5rem;
+    transition:
+      box-shadow theme('transitionDuration.base') theme('transitionTimingFunction.ease'),
+      border-color theme('transitionDuration.base') theme('transitionTimingFunction.ease'),
+      transform theme('transitionDuration.base') theme('transitionTimingFunction.ease');
+  }
+  .card:hover {
+    box-shadow: theme('boxShadow.subtle');
+    border-color: theme('colors.line');
+  }
+
+  /* ── Pill ──────────────────────────────────────────────────────────── */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: theme('fontSize.caption[0]');
+    line-height: 1;
+    padding: 0.3rem 0.6rem;
+    border-radius: theme('borderRadius.full');
+    border: 1px solid theme('colors.line');
+    background-color: theme('colors.paperAlt');
+    color: theme('colors.inkSoft');
+    font-family: theme('fontFamily.mono');
+  }
+  .pill-dot {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 9999px;
+    background-color: theme('colors.success');
+  }
+
+  /* ── Section divider ───────────────────────────────────────────────── */
+  .rule {
+    height: 1px;
+    background: linear-gradient(to right, transparent, theme('colors.line'), transparent);
+  }
+
+  /* ── Reveal-on-scroll helper ───────────────────────────────────────── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(0.75rem);
+    transition: opacity theme('transitionDuration.slow') theme('transitionTimingFunction.slow'),
+                transform theme('transitionDuration.slow') theme('transitionTimingFunction.slow');
+    will-change: opacity, transform;
+  }
+  .reveal-in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Utilities
+   ──────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  .section-y { @apply py-16 md:py-24 lg:py-section; }
+  .section-y-tight { @apply py-12 md:py-16 lg:py-20; }
+  .container-prose { @apply max-w-prose mx-auto; }
+  .container-tech { @apply max-w-proseTechnical mx-auto; }
+  .text-balance { text-wrap: balance; }
+  .text-pretty  { text-wrap: pretty; }
+}

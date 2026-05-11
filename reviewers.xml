@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ╔══════════════════════════════════════════════════════════════════════╗
+  ║  reviewers.xml — open-mamba reviewer agent registry                   ║
+  ║  Owner: yawningmonsoon | Updated: 2026-05-08 | Version: 0.1          ║
+  ║                                                                        ║
+  ║  Canonical registry of autonomous reviewer agents.                    ║
+  ║  Read by: open-mamba/orchestrator.py (scope only)                     ║
+  ║           taifoon-eco/src/BuildersRegistry.sol (proposed)             ║
+  ║                                                                        ║
+  ║  Each <reviewer> is itself a versioned adapter — anyone can submit a  ║
+  ║  new reviewer through the Builders Program. Reviewer adapters are     ║
+  ║  reviewed by the platform-checker reviewer + manual approval for the  ║
+  ║  initial bootstrap period.                                            ║
+  ║                                                                        ║
+  ║  Verdict types: pass | fail | inconclusive                            ║
+  ║  Stake_foon is locked at registration, slashable on counter-example.  ║
+  ╚══════════════════════════════════════════════════════════════════════╝
+-->
+<reviewers version="0.1" project="open-mamba" generated="2026-05-08" owner="yawningmonsoon">
+
+  <verdict_schema>
+    <field name="reviewer_id"      type="string"  description="Slug from <reviewer>"/>
+    <field name="reviewer_version" type="string"  description="Semver of reviewer adapter"/>
+    <field name="bounty_id"        type="string"  description="From bounties.xml"/>
+    <field name="submission_hash"  type="bytes32" description="sha256 of submission tarball"/>
+    <field name="verdict"          type="enum"    values="pass,fail,inconclusive"/>
+    <field name="reason_code"      type="string"  description="Structured reason; see reason_codes/"/>
+    <field name="reason_detail"    type="string"  description="Free-text detail (max 512 chars)"/>
+    <field name="replay_block_set" type="string"  description="Path to the replay block set used"/>
+    <field name="signed_at"        type="uint64"  description="Unix timestamp"/>
+    <field name="signature"        type="bytes"   description="Reviewer agent key signature"/>
+  </verdict_schema>
+
+  <reason_codes>
+    <code id="REPLAY_MATCH"          verdict="pass" description="Output matches reference for all replay blocks"/>
+    <code id="SCHEMA_CONFORMS"       verdict="pass" description="Output schema-exact against fill_event_v1"/>
+    <code id="ADVERSARIAL_PASSED"    verdict="pass" description="Adversarial test set fully passed"/>
+    <code id="ORACLE_RESOLVED"       verdict="pass" description="Cross-denom oracle wiring verified end-to-end"/>
+    <code id="REPLAY_DIFF"           verdict="fail" description="Replay output diverged from reference"/>
+    <code id="SCHEMA_INVALID"        verdict="fail" description="Output failed schema conformance"/>
+    <code id="PERF_BUDGET_EXCEEDED"  verdict="fail" description="p95 decode latency exceeded budget"/>
+    <code id="REORG_UNSAFE"          verdict="fail" description="Output emitted before finality"/>
+    <code id="DUP_HANDLING_INVALID"  verdict="fail" description="Duplicate logIndex handling broken"/>
+    <code id="LICENSE_MISSING"       verdict="fail" description="SPDX header missing"/>
+    <code id="INSUFFICIENT_FIXTURES" verdict="inconclusive" description="Reference set too small to vote confidently"/>
+    <code id="NOVEL_PROTOCOL_BEHAVIOR" verdict="inconclusive" description="Behavior outside reviewer's test coverage"/>
+    <code id="ENCLAVE_FAILURE"       verdict="inconclusive" description="Confidential-compute enclave errored mid-replay"/>
+  </reason_codes>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       REPLAY-CLASS REVIEWERS — chain-specific historical replay
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <reviewer slug="evm-replay" stake_foon="50000" status="active">
+    <name>EVM Historical Replay Reviewer</name>
+    <scope>EVM-class chains (1, 10, 56, 137, 250, 324, 8453, 42161, 43114, 59144, 81457, 534352, 5000)</scope>
+    <approves>decoder-gap (EVM), aggregator-decomp (EVM), platform-phase5, platform-phase6</approves>
+    <reference_block_set>/root/taifoon-intel-data/replay-sets/evm/v1/</reference_block_set>
+    <perf_budget_p95_ms>50</perf_budget_p95_ms>
+    <fixture_threshold>10000</fixture_threshold>
+    <enclave>required</enclave>
+    <signing_key>see grid-chain reviewer registry</signing_key>
+  </reviewer>
+
+  <reviewer slug="sol-replay" stake_foon="50000" status="active">
+    <name>Solana Historical Replay Reviewer</name>
+    <scope>Solana mainnet-beta, Mayan Solana side, Wormhole Solana side</scope>
+    <approves>surge-bridge (sol), decoder-gap (sol), dossier (sol)</approves>
+    <reference_block_set>/root/taifoon-intel-data/replay-sets/sol/v1/</reference_block_set>
+    <perf_budget_p95_ms>80</perf_budget_p95_ms>
+    <fixture_threshold>10000</fixture_threshold>
+    <enclave>required</enclave>
+  </reviewer>
+
+  <reviewer slug="btc-replay" stake_foon="50000" status="active">
+    <name>Bitcoin Historical Replay Reviewer</name>
+    <scope>BTC mainnet, Taproot HTLC, runes, ordinals, Lightning bound exits</scope>
+    <approves>surge-bridge (btc)</approves>
+    <reference_block_set>/root/taifoon-intel-data/replay-sets/btc/v1/</reference_block_set>
+    <perf_budget_p95_ms>100</perf_budget_p95_ms>
+    <fixture_threshold>10000</fixture_threshold>
+    <reorg_safety>6 confirmations required before emit</reorg_safety>
+    <enclave>required</enclave>
+  </reviewer>
+
+  <reviewer slug="sui-replay" stake_foon="50000" status="bootstrap">
+    <name>Sui Historical Replay Reviewer</name>
+    <scope>Sui chain, Wormhole Sui side</scope>
+    <approves>decoder-gap (sui)</approves>
+    <reference_block_set>/root/taifoon-intel-data/replay-sets/sui/v1/ (TODO populate)</reference_block_set>
+    <perf_budget_p95_ms>80</perf_budget_p95_ms>
+    <fixture_threshold>5000</fixture_threshold>
+    <enclave>required</enclave>
+  </reviewer>
+
+  <reviewer slug="cosmos-replay" stake_foon="50000" status="bootstrap">
+    <name>Cosmos-zone Historical Replay Reviewer</name>
+    <scope>Cosmos zones, Hyperlane non-EVM, Axelar, Wormhole Cosmos targets</scope>
+    <approves>decoder-gap (cosmos)</approves>
+    <reference_block_set>/root/taifoon-intel-data/replay-sets/cosmos/v1/ (TODO populate)</reference_block_set>
+    <perf_budget_p95_ms>80</perf_budget_p95_ms>
+    <fixture_threshold>5000</fixture_threshold>
+    <enclave>required</enclave>
+  </reviewer>
+
+  <reviewer slug="lambda-replay" stake_foon="50000" status="active">
+    <name>t3rn / Lambda Operator Replay Reviewer</name>
+    <scope>t3rn order protocol, Lambda Operator delivery trace</scope>
+    <approves>decoder-gap (t3rn), dossier (t3rn)</approves>
+    <reference_block_set>/root/taifoon-intel-data/replay-sets/lambda/v1/</reference_block_set>
+    <perf_budget_p95_ms>50</perf_budget_p95_ms>
+    <fixture_threshold>5000</fixture_threshold>
+    <enclave>required</enclave>
+  </reviewer>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SCHEMA / PROPERTY REVIEWERS — chain-agnostic, output-shape gates
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <reviewer slug="schema-conformer" stake_foon="25000" status="active">
+    <name>Canonical Schema Conformer</name>
+    <scope>fill_event_v1, deposit_event_v1, solver_dossier_v1, route_coverage_v1</scope>
+    <approves>all categories — runs as second reviewer on every bounty</approves>
+    <enforces>
+      <rule>All required fields present and correctly typed</rule>
+      <rule>USD value reconciled against on-chain price oracle within ±25 bps</rule>
+      <rule>request_ts &lt; fill_ts</rule>
+      <rule>chain_id integers match canonical registry</rule>
+      <rule>solver_addr lowercased + checksummed (EVM) or base58 (sol)</rule>
+    </enforces>
+    <enclave>not required (deterministic property checks)</enclave>
+  </reviewer>
+
+  <reviewer slug="oracle-checker" stake_foon="25000" status="active">
+    <name>Cross-denom Oracle Checker</name>
+    <scope>USD oracle wiring for cross-denom protocols (Mayan, deBridge, Meson, etc.)</scope>
+    <approves>oracle category bounties</approves>
+    <enforces>
+      <rule>Oracle source whitelisted (Chainlink, Pyth, Uniswap V3 TWAP, internal)</rule>
+      <rule>Cross-source consensus check enabled when 2+ oracles available</rule>
+      <rule>Stale-price guard: reject if oracle older than chain-specific threshold</rule>
+    </enforces>
+    <enclave>not required</enclave>
+  </reviewer>
+
+  <reviewer slug="aggregator-decomposer" stake_foon="25000" status="active">
+    <name>Aggregator Route Decomposer</name>
+    <scope>Li.Fi, Socket, Squid, Rango, 1inch decomposition</scope>
+    <approves>aggregator-decomp category</approves>
+    <enforces>
+      <rule>Underlying bridge attributed correctly per inner call</rule>
+      <rule>Volume sum across underlying bridges == aggregator deposit</rule>
+      <rule>No double-counting in fill attribution</rule>
+    </enforces>
+    <enclave>not required</enclave>
+  </reviewer>
+
+  <reviewer slug="dossier-builder" stake_foon="25000" status="active">
+    <name>Solver Dossier Format Validator</name>
+    <scope>solver_dossier_v1, route_coverage_v1, dossier-promotion bounties</scope>
+    <approves>dossier category, LOW-tier promotion bounties</approves>
+    <enforces>
+      <rule>Solver address registered with first-seen block</rule>
+      <rule>Fill latency p50/p95 computed over &gt;=100 fills</rule>
+      <rule>Spread deviation reference price documented</rule>
+      <rule>Route coverage matrix dimensions match chain registry</rule>
+    </enforces>
+    <enclave>not required</enclave>
+  </reviewer>
+
+  <reviewer slug="platform-checker" stake_foon="25000" status="active">
+    <name>Platform Submission Checker</name>
+    <scope>Phase 5/6 platform bounties, changes to BUILDERS_PROGRAM.md and bounties.xml</scope>
+    <approves>platform-phase5, platform-phase6, spec changes</approves>
+    <enforces>
+      <rule>SSE backpressure handling implemented</rule>
+      <rule>Service binary integrates with existing systemd unit pattern</rule>
+      <rule>No regression in DA-API health check</rule>
+      <rule>Spec changes preserve cross-references between protocols.xml + bounties.xml</rule>
+    </enforces>
+    <enclave>not required</enclave>
+  </reviewer>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Reviewer assignment defaults — orchestrator reads this if a bounty
+       does not specify reviewers explicitly
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <defaults>
+    <category id="decoder-gap"        primary="evm-replay"           secondary="schema-conformer"/>
+    <category id="surge-bridge"       primary="btc-replay,sol-replay" secondary="schema-conformer"/>
+    <category id="aggregator-decomp"  primary="aggregator-decomposer" secondary="schema-conformer"/>
+    <category id="oracle"             primary="oracle-checker"       secondary="schema-conformer"/>
+    <category id="platform-phase5"    primary="platform-checker"     secondary="schema-conformer"/>
+    <category id="platform-phase6"    primary="platform-checker"     secondary="oracle-checker"/>
+    <category id="dossier"            primary="dossier-builder"      secondary="schema-conformer"/>
+  </defaults>
+
+  <!-- Aggregate metrics — read by /api/intel/reviewers when implemented -->
+  <stats>
+    <count active="9" bootstrap="2" total="11"/>
+    <stake_total_foon>425000</stake_total_foon>
+  </stats>
+
+</reviewers>

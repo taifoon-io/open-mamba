@@ -1,0 +1,77 @@
+[agent]
+slug = "cubicle-health-overseer"
+role = "ops-watchdog"
+description = """
+Oversees the AlgoTrada cubicle pipeline on prod (root@88.99.1.32).
+Polls `cubicled health --json --all-units` every 60s, alerts on any RED
+check, auto-attempts `systemctl restart` for failed services with a
+cooldown so we don't loop. Multi-tenant aware: when a watchdog (e.g.
+algotrada-watchdog.service) trips, escalates to operator immediately
+instead of auto-restart.
+
+Reads from:
+  - `cubicled health` JSON output (the source of truth)
+  - `data/delivery/health_alerts.jsonl` for sentinels
+  - `journalctl` for recent failures' stderr context
+
+Writes to:
+  - Telegram (operator chat) for alerts + recovery confirmations
+  - `data/delivery/health_overseer_log.jsonl` for the dashboard
+  - Optional: GitHub issue creation for chronic failures
+"""
+model = "nemotron-3-nano:4b"  # in-house cubicle-trader sibling, on the same Ollama
+delivery_channel = "telegram"
+delivery_to = "8510452953"   # operator chat
+
+[poll]
+interval_seconds = 60
+host = "root@88.99.1.32"
+command = "cd /opt/algotrada-brain/scripts && PYTHONPATH=/opt/algotrada-brain/scripts python3 -m cubicled health --json"
+
+[auto_restart]
+# Auto-restart these units on failure. Each has a cooldown to avoid
+# loops; if the unit fails again within cooldown_seconds, escalate to
+# operator instead of restarting.
+allowed_units = [
+    "algotrada-replay.service",
+    "algotrada-replay-90d.service",
+    "algotrada-sidecar-optimizer.service",
+    "algotrada-sidecar-verify.service",
+    "algotrada-walk-14d.service",
+    "algotrada-e2e-verify.service",
+    "shadow-api.service",
+    "scan_decay.service",
+]
+cooldown_seconds = 600   # 10 min between restarts of the same unit
+max_restarts_per_hour = 3
+
+[alert_rules]
+# Anything in this list bypasses auto-restart and goes straight to the
+# operator. These are signals where automatic action could make things
+# worse.
+operator_only = [
+    "kraken-micro-executor.service",      # touches live exchange
+    "paper-smt-executor.service",         # the gate logic — restart needs human eye
+    "algotrada-watchdog.service",         # if the watchdog itself dies, alert loud
+    "algotrada-cubicled-sync.service",    # writes to DuckDB; mid-flight restart corrupts WAL
+    "algotrada-api.service",              # Rust API; restart drops in-flight connections
+]
+
+[escalation]
+# If overall_ok stays false for >X minutes, page operator at higher
+# priority. A single bad cycle is noise; sustained RED is real.
+red_for_minutes = 5
+
+[multi_tenant]
+# Hands registry — the overseer should also report per-tenant health:
+# how many hands are ARMED, how many KILLED, recent cull/promote events.
+hands_table = "/opt/algotrada-brain/data/algotrada.duckdb:hands"
+cull_log = "/opt/algotrada-brain/data/genome_culls.jsonl"
+
+[dashboard_emit]
+# Write a state JSON the cubicle-dashboard can poll. Same shape as
+# cubicled health --json plus the overseer's recent actions.
+out_file = "/opt/algotrada-brain/data/delivery/health_overseer_state.json"
+
+[openfang]
+agent_name = "cubicle-health-overseer"

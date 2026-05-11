@@ -1,0 +1,96 @@
+# /etc/nginx/sites-available/mamba.taifoon.dev
+#
+# Marketing site for mamba-nemotron-agw-adapter — static export from
+# Next.js 14, served by nginx. HTTPS via Let's Encrypt (issued by certbot
+# --nginx). HTTP redirects to HTTPS. HSTS enabled (1 year, includeSubDomains).
+#
+# Source folder on server: /opt/mamba-nemotron-agw-adapter/site/out/
+#
+# Owner: yawningmonsoon · maciej@t3rn.io
+# Per CLAUDE.md (spinner): NEVER disable an existing site. This is a NEW
+# server block; nginx -t must pass before reload.
+
+# ---- HTTP → HTTPS ----
+server {
+    listen 80;
+    listen [::]:80;
+    server_name mamba.taifoon.dev;
+
+    # Let's Encrypt HTTP-01 challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ---- HTTPS ----
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name mamba.taifoon.dev;
+
+    ssl_certificate     /etc/letsencrypt/live/mamba.taifoon.dev/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/mamba.taifoon.dev/privkey.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/mamba.taifoon.dev/chain.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL_mamba:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # OCSP stapling
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    resolver 1.1.1.1 8.8.8.8 valid=300s;
+    resolver_timeout 5s;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+
+    root /opt/mamba-nemotron-agw-adapter/site/out;
+    index index.html;
+
+    # gzip
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/json application/xml application/rss+xml image/svg+xml;
+    gzip_proxied any;
+
+    # Static asset caching — Next.js writes content-hashed filenames under
+    # _next/static/, so they're safe to cache forever. The "^~" prefix
+    # makes this win over the regex rule below.
+    location ^~ /_next/static/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable" always;
+        try_files $uri =404;
+    }
+
+    # Other static assets (favicon, og.png, etc.) get a moderate cache.
+    location ~* \.(?:ico|css|js|gif|jpe?g|png|svg|webp|woff2?|webmanifest|xml|txt)$ {
+        expires 7d;
+        add_header Cache-Control "public" always;
+        try_files $uri =404;
+    }
+
+    # Pretty URLs from Next.js static export — try .html, then directory index
+    location / {
+        try_files $uri $uri.html $uri/index.html $uri/ =404;
+    }
+
+    # Custom 404 from Next.js
+    error_page 404 /404.html;
+
+    access_log /var/log/nginx/mamba.taifoon.dev.access.log;
+    error_log  /var/log/nginx/mamba.taifoon.dev.error.log warn;
+}

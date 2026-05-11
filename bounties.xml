@@ -1,0 +1,617 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ╔══════════════════════════════════════════════════════════════════════╗
+  ║  bounties.xml — Taifoon Builders Program bounty registry              ║
+  ║  Owner: yawningmonsoon | Generated: 2026-05-08 | Version: 0.1        ║
+  ║                                                                        ║
+  ║  Each <bounty> derives from a <gap> in protocols.xml or from           ║
+  ║  PROTOCOL_COVERAGE_ROADMAP.md Phase 5/6, plus net-new categories       ║
+  ║  (Surge BTC + Solana native bridges).                                  ║
+  ║                                                                        ║
+  ║  Reviewed by: open-mamba/reviewers.xml                                 ║
+  ║  Spec:        BUILDERS_PROGRAM.md                                      ║
+  ║                                                                        ║
+  ║  Reward tiers (FOON, upfront grant on auto-merge):                     ║
+  ║    HIGH        5000   ongoing share 8% of touched call revenue        ║
+  ║    MEDIUM      2000   ongoing share 8%                                ║
+  ║    LOW          500   ongoing share 8%                                ║
+  ║    FLAGSHIP   25000   bridge-class native integrations                ║
+  ║                                                                        ║
+  ║  Status lifecycle:                                                     ║
+  ║    OPEN → CLAIMED → SUBMITTED → REVIEWING → MERGED | REJECTED         ║
+  ║    (REJECTED bounties return to OPEN)                                 ║
+  ╚══════════════════════════════════════════════════════════════════════╝
+-->
+<bounties version="0.1" project="taifoon-builders" generated="2026-05-08" owner="yawningmonsoon">
+
+  <!--
+    DONUT ECONOMICS — n8n Sustainable Use License lineage, performance-only.
+
+    NO upfront grant. NO synthetic token. NO prize.
+
+    Every paid call / solver fill that flows through Taifoon is skimmed by a
+    49 bps donut (configurable per surface) which is auto-distributed at
+    settlement in the same currency the upstream call settled in:
+
+        70%  → Creator       — the contributor whose adapter routed the call
+        20%  → Reviewers     — split among the PASS-voting reviewer agents
+                                that certified the adapter
+        10%  → Ecosystem     — funds COE operations, audits, infra
+
+    A creator earns only if their work ships traffic. A reviewer earns only
+    if the adapter they certified survives the challenge window AND keeps
+    producing fills. The treasury fills only when the platform serves paid
+    demand. Performance economics, end-to-end.
+
+    The tier of a bounty denotes its EXPECTED VOLUME CLASS (not an upfront
+    amount). Higher tier = larger expected donut slice over time. The
+    creator_slice_bps below scales the donut split for that tier.
+
+    License (TSUL): source-available, internal commercial use free,
+    hosted-competing-service restricted. The donut routing is on-chain in
+    BuildersRegistry — any fork that bypasses it violates TSUL and is
+    verifiably divergent from canonical Taifoon.
+  -->
+  <volume_tiers>
+    <tier id="FLAGSHIP" creator_slice_bps="700" volume_class="S"   description="S-tier expected volume — Surge native bridges, solver execution engine"/>
+    <tier id="HIGH"     creator_slice_bps="700" volume_class="A"   description="A-tier — top decoder gaps + solver adapters for top-volume protocols"/>
+    <tier id="MEDIUM"   creator_slice_bps="700" volume_class="B"   description="B-tier — secondary decoder gaps, mid-volume solver adapters"/>
+    <tier id="LOW"      creator_slice_bps="700" volume_class="C"   description="C-tier — edge cases, dossier refinements, incremental polish"/>
+    <tier id="PLATFORM" creator_slice_bps="500" volume_class="ALL" description="Platform infrastructure — Matrix SSE, fee verification, engine work; donut applies on every call across all adapters"/>
+  </volume_tiers>
+
+  <donut_split default_donut_bps="49">
+    <!-- Skim 49 bps from every paid call / fill, then split -->
+    <slice party="creator"   bps="7000" description="Adapter contributor — the leaf that produced the value"/>
+    <slice party="reviewers" bps="2000" description="Split equally among PASS-voting reviewer agents that certified it"/>
+    <slice party="ecosystem" bps="1000" description="Treasury — COE ops, audits, ongoing platform infra"/>
+  </donut_split>
+
+  <categories>
+    <category id="decoder-gap"      description="Close a <gap> from protocols.xml"/>
+    <category id="surge-bridge"     description="Native non-EVM bridge under Taifoon Surge"/>
+    <category id="aggregator-decomp" description="Aggregator route decomposition (lifi/socket/squid/rango/1inch)"/>
+    <category id="oracle"           description="Cross-denom USD oracle wiring for fee resolution"/>
+    <category id="platform-phase5"  description="Matrix Live Feed SSE"/>
+    <category id="platform-phase6"  description="Fee verification observed-vs-documented"/>
+    <category id="dossier"          description="Solver dossiers per protocol"/>
+    <category id="solver-engine"    description="Taifoon Solver execution core — intent → profit-calc → fill → V5-proof"/>
+    <category id="solver-adapter"   description="On-chain protocol adapter under TaifoonUniversalOperator"/>
+  </categories>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       FLAGSHIP — Surge native bridges (BTC, Solana)
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <bounty id="surge-btc-listener" tier="FLAGSHIP" category="surge-bridge" status="OPEN">
+    <title>Taifoon Surge — BTC native bridge listener</title>
+    <description>
+      Implement a Taproot-aware BTC listener that observes HTLC deposits and
+      fills, emits canonical fill_event_v1 shards under
+      /protocol/taifoon-surge-btc/ with bridge_protocol="taifoon-surge-btc".
+      Build on existing BitcoinPoWVerifierV2.sol (taifoon-eco/contracts/light-client/).
+      Includes: runes/ordinals deposit support, lightning-bound exit detection.
+    </description>
+    <inputs>
+      <existing_contracts>BitcoinPoWVerifier.sol,BitcoinPoWVerifierV2.sol,TaifoonLightClientRegistry.sol</existing_contracts>
+      <reference_chain>BTC mainnet</reference_chain>
+      <output_namespace>protocol/taifoon-surge-btc/shards/fill_event_v1.jsonl</output_namespace>
+    </inputs>
+    <acceptance>
+      <criterion>Replay 10K historical Taproot HTLC tx, schema-exact output</criterion>
+      <criterion>p95 decode &lt;100ms (BTC has higher tolerance than EVM)</criterion>
+      <criterion>Reorg-safe: 6-confirmation threshold before emit</criterion>
+      <criterion>Emits both deposit and fill events for round-trip correlation</criterion>
+    </acceptance>
+    <reviewers>open-mamba/btc-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="surge-sol-listener" tier="FLAGSHIP" category="surge-bridge" status="OPEN">
+    <title>Taifoon Surge — Solana native bridge listener</title>
+    <description>
+      Slot-indexed event listener emitting into fill_event_v1 with
+      bridge_protocol="taifoon-surge-sol". Build on existing
+      SolanaPoHVerifierV2.sol. Must integrate with Jupiter aggregator for
+      cross-VM route attribution. Includes account-based decoder, compute-unit
+      cost tracking, and CPI-depth detection for nested swaps.
+    </description>
+    <inputs>
+      <existing_contracts>SolanaPoHVerifier.sol,SolanaPoHVerifierV2.sol</existing_contracts>
+      <reference_chain>Solana mainnet-beta</reference_chain>
+      <output_namespace>protocol/taifoon-surge-sol/shards/fill_event_v1.jsonl</output_namespace>
+    </inputs>
+    <acceptance>
+      <criterion>Replay 10K historical slots with native + Jupiter fills</criterion>
+      <criterion>p95 decode &lt;80ms</criterion>
+      <criterion>Slot-finality safe: emit only after slot rooted</criterion>
+      <criterion>Cross-VM correlation with Mayan Swift Solana side</criterion>
+    </acceptance>
+    <reviewers>open-mamba/sol-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       HIGH severity — currently blocking GOLD promotion
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <bounty id="layerzero-fill-decoder" tier="HIGH" category="decoder-gap" status="OPEN">
+    <title>LayerZero V2 fill-side decoder (PacketReceived)</title>
+    <description>
+      Implement fill-side decoder for LayerZero V2. PacketReceived event on
+      destination chain. Currently fill=false, blocking GOLD promotion despite
+      S-tier volume.
+    </description>
+    <derived_from gap_severity="HIGH" protocol="layerzero" gap_index="0"/>
+    <acceptance>
+      <criterion>fill=true and order_id_match=true after merge</criterion>
+      <criterion>Replay match on 10K historical PacketReceived events</criterion>
+      <criterion>Promotion check: tier flips to icp_ready=partial automatically</criterion>
+    </acceptance>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="wormhole-sui-vaa" tier="HIGH" category="decoder-gap" status="OPEN">
+    <title>Wormhole — Sui chain VAA observation pipeline</title>
+    <description>
+      VAA observation pipeline missing for Sui. Currently only EVM + Solana
+      observed. Sui adds non-trivial volume to S-tier Wormhole flow.
+    </description>
+    <derived_from gap_severity="HIGH" protocol="wormhole" gap_index="0"/>
+    <acceptance>
+      <criterion>Sui VAA emission events ingested + correlated with destination redemption</criterion>
+      <criterion>Cross-chain id matching with EVM and Solana sides</criterion>
+    </acceptance>
+    <reviewers>open-mamba/sui-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       MEDIUM severity — fee confidence + completeness
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <bounty id="t3rn-trace-verify" tier="MEDIUM" category="decoder-gap" status="OPEN">
+    <title>t3rn delivery-trace step 4-6 production verification</title>
+    <description>
+      Verify steps 4-6 delivery trace marks appear in production after operator
+      key activation (2026-04-28). Build verification harness against /v5/orders
+      and /api/lambda/delivery-trace.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="t3rn" gap_index="0"/>
+    <reviewers>open-mamba/lambda-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="hyperlane-fill-amount" tier="MEDIUM" category="decoder-gap" status="OPEN">
+    <title>Hyperlane Process(id) output amount resolution</title>
+    <description>
+      Process(id) fill has messageId but no output amount. Resolve via inner
+      transfer trace or destination-chain MessageReceived dispatchers.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="hyperlane" gap_index="0"/>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="hyperlane-nonevm-backfill" tier="MEDIUM" category="decoder-gap" status="OPEN">
+    <title>Hyperlane non-EVM dispatch historical backfill</title>
+    <description>
+      Backfill historical dispatches for non-EVM Hyperlane chains (Solana,
+      Cosmos). Required for full A-tier volume attribution.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="hyperlane" gap_index="1"/>
+    <reviewers>open-mamba/sol-replay,open-mamba/cosmos-replay</reviewers>
+  </bounty>
+
+  <bounty id="wormhole-vaa-fill" tier="MEDIUM" category="decoder-gap" status="OPEN">
+    <title>Wormhole — fill amount from on-chain VAA redemption</title>
+    <description>
+      Fill sentinel currently resolved from deposit output_expected. Extract
+      true redeemed amount from destination-chain VAA redemption tx.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="wormhole" gap_index="1"/>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="debridge-cross-denom-oracle" tier="MEDIUM" category="oracle" status="OPEN">
+    <title>deBridge DLN — cross-denom USD oracle</title>
+    <description>
+      giveAmount / takeAmount are cross-denom. Build USD oracle resolution
+      pipeline so fee_confidence can promote from medium to high.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="debridge" gap_index="0"/>
+    <reviewers>open-mamba/oracle-checker,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="relay-fill-output" tier="MEDIUM" category="decoder-gap" status="OPEN">
+    <title>Relay.link fill-output decoder</title>
+    <description>
+      Explicit fee_amount field decoded from deposit (RelayBridgeFee event) but
+      fill output not decoded. Close the round-trip.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="relay" gap_index="0"/>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="lifi-real-deposit" tier="MEDIUM" category="aggregator-decomp" status="OPEN">
+    <title>Li.Fi — real deposit amount (replace minAmount)</title>
+    <description>
+      Deposit currently uses minAmount, not real deposit. Decode actual amount
+      from inner transfer call.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="lifi" gap_index="0"/>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="lifi-decomposition" tier="MEDIUM" category="aggregator-decomp" status="OPEN">
+    <title>Li.Fi — aggregator route decomposition</title>
+    <description>
+      Attribute Li.Fi volume to underlying bridge used (Across, Stargate,
+      Hop, etc.). Required for accurate per-protocol volume attribution.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="lifi" gap_index="1"/>
+    <reviewers>open-mamba/aggregator-decomposer,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="socket-decomposition" tier="MEDIUM" category="aggregator-decomp" status="OPEN">
+    <title>Socket / Bungee — aggregator decomposition</title>
+    <description>
+      SocketBridge decoded (amount/token/dst/sender) — no fill event exists.
+      Attribute to underlying bridge.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="socket" gap_index="0"/>
+    <reviewers>open-mamba/aggregator-decomposer,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="squid-historical-backfill" tier="MEDIUM" category="decoder-gap" status="OPEN">
+    <title>Squid — historical fill correlation via payloadHash</title>
+    <description>
+      payloadHash secondary index added 2026-04-28 — correlation improves for
+      new deposits. Backfill historical fills.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="squid" gap_index="0"/>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="squid-fill-amount" tier="MEDIUM" category="decoder-gap" status="OPEN">
+    <title>Squid — fill output amount via Axelar GMP</title>
+    <description>
+      Fill (CrossMulticallExecuted) has no output amount. Extract from inner
+      Axelar GMP execute tx.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="squid" gap_index="1"/>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="meson-cross-denom" tier="MEDIUM" category="oracle" status="OPEN">
+    <title>Meson — cross-denom oracle for fee confidence promotion</title>
+    <description>
+      encodedSwap bit-decode implemented. Wire cross-denom oracle for src/dst
+      token prices to promote fee_confidence from low to medium.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="meson" gap_index="0"/>
+    <reviewers>open-mamba/oracle-checker,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="router-fill-decoder" tier="MEDIUM" category="decoder-gap" status="OPEN">
+    <title>Router Protocol — CrossTalkReceived fill decoder</title>
+    <description>
+      Implement fill decoder. CrossTalkReceived event on destination chain.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="router_protocol" gap_index="0"/>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="allbridge-fill-decoder" tier="MEDIUM" category="decoder-gap" status="OPEN">
+    <title>Allbridge Core — fill decoder</title>
+    <description>
+      Explicit fee_bps decoded from TokensSent. Add fill-side to close round-trip.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="allbridge" gap_index="0"/>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="ccip-v15-readiness" tier="MEDIUM" category="decoder-gap" status="BLOCKED">
+    <title>CCIP — fill amount via v1.5</title>
+    <description>
+      Fill is sentinel. ExecutionStateChanged has no output amount. Bounty
+      activates when CCIP v1.5 ships fill-amount field.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="ccip" gap_index="1"/>
+    <blocker>Upstream CCIP v1.5 release</blocker>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="1inch-fusion-resolver" tier="MEDIUM" category="decoder-gap" status="OPEN">
+    <title>1inch Fusion v2 + Limit Order Book decoder</title>
+    <description>
+      Fusion v2 orders use off-chain resolver — no on-chain deposit. Decode
+      via resolver settlement. Limit-order book events also need decode.
+    </description>
+    <derived_from gap_severity="MEDIUM" protocol="1inch" gap_index="0"/>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       LOW severity — polish + edge cases
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <bounty id="across-fee-window" tier="LOW" category="decoder-gap" status="OPEN">
+    <title>Across — promote icp.ready to yes after 24h fee window</title>
+    <derived_from gap_severity="LOW" protocol="across" gap_index="0"/>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <bounty id="connext-abi-verify" tier="LOW" category="decoder-gap" status="OPEN">
+    <title>Connext — destinationDomain struct-pointer ABI assumption verification</title>
+    <derived_from gap_severity="LOW" protocol="connext" gap_index="0"/>
+    <reviewers>open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="axelar-token-mapping" tier="LOW" category="oracle" status="OPEN">
+    <title>Axelar — symbol→address mapping for token oracle</title>
+    <derived_from gap_severity="LOW" protocol="axelar" gap_index="0"/>
+    <reviewers>open-mamba/oracle-checker</reviewers>
+  </bounty>
+
+  <bounty id="celer-promote" tier="LOW" category="decoder-gap" status="OPEN">
+    <title>Celer — confirm gold-grade decoders despite low live volume</title>
+    <derived_from gap_severity="LOW" protocol="celer" gap_index="0"/>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <bounty id="synapse-promote" tier="LOW" category="decoder-gap" status="OPEN">
+    <title>Synapse — promote DARK→SILVER once fill rate &gt;50% observed</title>
+    <derived_from gap_severity="LOW" protocol="synapse" gap_index="0"/>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <bounty id="symbiosis-confirm" tier="LOW" category="decoder-gap" status="OPEN">
+    <title>Symbiosis — confirm SynthesizeRequest+SynthesizeCompleted requestId match</title>
+    <derived_from gap_severity="LOW" protocol="symbiosis" gap_index="0"/>
+    <reviewers>open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="meson-promote" tier="LOW" category="oracle" status="OPEN">
+    <title>Meson — promote SILVER→GOLD when cross-denom oracle resolves</title>
+    <derived_from gap_severity="LOW" protocol="meson" gap_index="1"/>
+    <depends_on>meson-cross-denom</depends_on>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <bounty id="hop-fingerprint-collision" tier="LOW" category="decoder-gap" status="OPEN">
+    <title>Hop — same-block double-bridge fingerprint collision</title>
+    <derived_from gap_severity="LOW" protocol="hop" gap_index="0"/>
+    <reviewers>open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="orbiter-recipient-collision" tier="LOW" category="decoder-gap" status="OPEN">
+    <title>Orbiter — same-route same-block recipient key collision</title>
+    <derived_from gap_severity="LOW" protocol="orbiter_finance" gap_index="0"/>
+    <reviewers>open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="orbiter-makers-list" tier="LOW" category="decoder-gap" status="OPEN">
+    <title>Orbiter — automated ORBITER_MAKERS list staleness check</title>
+    <derived_from gap_severity="LOW" protocol="orbiter_finance" gap_index="1"/>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <bounty id="rango-fill-decoder" tier="LOW" category="aggregator-decomp" status="OPEN">
+    <title>Rango — aggregator decomposition (no fill decoder)</title>
+    <derived_from gap_severity="LOW" protocol="rango" gap_index="0"/>
+    <reviewers>open-mamba/aggregator-decomposer</reviewers>
+  </bounty>
+
+  <bounty id="ccip-deposit-target" tier="LOW" category="decoder-gap" status="MERGED">
+    <title>CCIP — receiver decode from EVM2EVMMessage slot-2</title>
+    <derived_from gap_severity="LOW" protocol="ccip" gap_index="0"/>
+    <merged_at>2026-04-28</merged_at>
+    <note>Already shipped per protocols.xml deposit_target=true</note>
+  </bounty>
+
+  <bounty id="arbitrum-7day-stat" tier="LOW" category="decoder-gap" status="OPEN">
+    <title>Arbitrum bridge — separate 7-day-window stat from solver-fill-latency</title>
+    <derived_from gap_severity="LOW" protocol="arbitrum_bridge" gap_index="0"/>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <bounty id="optimism-7day-stat" tier="LOW" category="decoder-gap" status="OPEN">
+    <title>Optimism bridge — separate 7-day-window stat from solver-fill-latency</title>
+    <derived_from gap_severity="LOW" protocol="optimism_bridge" gap_index="0"/>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       PLATFORM — Phase 5 + Phase 6 from PROTOCOL_COVERAGE_ROADMAP.md
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <bounty id="matrix-sse-stream" tier="PLATFORM" category="platform-phase5" status="OPEN">
+    <title>Phase 5 — Matrix Live Feed SSE</title>
+    <description>
+      Add /search-api/events/stream endpoint, subscribe to collector callbacks,
+      push decoded protocol events. Wire to RouteMatrix.tsx.
+    </description>
+    <acceptance>
+      <criterion>SSE endpoint live with backpressure handling</criterion>
+      <criterion>RouteMatrix.tsx renders live cross-chain transfers</criterion>
+      <criterion>Per-protocol health indicators reflect last_seen</criterion>
+    </acceptance>
+    <reviewers>open-mamba/platform-checker</reviewers>
+  </bounty>
+
+  <bounty id="fee-verification" tier="PLATFORM" category="platform-phase6" status="OPEN">
+    <title>Phase 6 — Fee verification observed-vs-documented</title>
+    <description>
+      Parse Transfer events for input/output amounts. Compute fee_bps =
+      (input - output) / input * 10000. Compare to documented fees per
+      protocols.xml. Store with timestamps. Confidence levels: LIVE / CACHED / EST.
+    </description>
+    <acceptance>
+      <criterion>Per-protocol fee_bps_observed time series in DA-API</criterion>
+      <criterion>Discrepancy &gt;5bps triggers signal: fee-discrepancy-bps</criterion>
+      <criterion>Daily reconciliation report committed to grid chain</criterion>
+    </acceptance>
+    <reviewers>open-mamba/platform-checker,open-mamba/oracle-checker</reviewers>
+  </bounty>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       DOSSIER — solver intelligence per GOLD protocol
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <bounty id="solver-dossier-across" tier="MEDIUM" category="dossier" status="OPEN">
+    <title>Solver dossier — Across V3</title>
+    <description>
+      Per-solver fill latency, spread deviation, route coverage matrix.
+      Output: solvers/across/shards/solver_dossier_v1.jsonl
+    </description>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <bounty id="solver-dossier-mayan" tier="MEDIUM" category="dossier" status="OPEN">
+    <title>Solver dossier — Mayan Swift</title>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <bounty id="solver-dossier-debridge" tier="MEDIUM" category="dossier" status="OPEN">
+    <title>Solver dossier — deBridge DLN</title>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <bounty id="solver-dossier-relay" tier="MEDIUM" category="dossier" status="OPEN">
+    <title>Solver dossier — Relay.link</title>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <bounty id="solver-dossier-t3rn" tier="MEDIUM" category="dossier" status="OPEN">
+    <title>Solver dossier — t3rn / Lambda Operator</title>
+    <reviewers>open-mamba/dossier-builder</reviewers>
+  </bounty>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SOLVER — Taifoon Solver core + protocol adapters routed through
+       TaifoonUniversalOperator (V5-proof verified). Hackathon submission
+       surface: every bounty here maps to a sub-deliverable visible to
+       judges via /builders/bounties?category=solver-engine|solver-adapter.
+       Spec: docs/TAIFOON_PROFESSIONAL_SOLVER.md, TAIFOON_SOLVER_MASTER_PLAN.md
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <bounty id="solver-execution-engine" tier="FLAGSHIP" category="solver-engine" status="OPEN">
+    <title>Taifoon Solver — execution core (Rust + Tokio)</title>
+    <description>
+      Rust solver engine: intent stream from genome SSE, profit calculator
+      (fees − gas − liquidity), execution orchestrator routing through
+      TaifoonUniversalOperator with V5 proof, RocksDB state, /api/solve +
+      /stream endpoints integrated into da-api.
+    </description>
+    <acceptance>
+      <criterion>Detects intents from 9 GOLD-tier protocols within 200ms of emit</criterion>
+      <criterion>Profit calc rejects fills under $1 net (after gas + LP cost)</criterion>
+      <criterion>Every fill routes through TaifoonUniversalOperator with valid V5 proof</criterion>
+      <criterion>Mempool watcher abandons fills already taken by competing solvers</criterion>
+      <criterion>p95 intent-to-fill latency &lt;15s on devnet replay set</criterion>
+    </acceptance>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer,open-mamba/platform-checker</reviewers>
+  </bounty>
+
+  <bounty id="solver-v5-proof-router" tier="HIGH" category="solver-engine" status="OPEN">
+    <title>Solver — V5 proof router via TaifoonUniversalOperator</title>
+    <description>
+      Wraps every fill in a V5 proof bundle and submits via
+      TaifoonUniversalOperator(V5Proof + Calldata) → ProtocolAdapter →
+      ProtocolContract. No direct adapter calls allowed.
+    </description>
+    <acceptance>
+      <criterion>0 fills bypass the universal operator</criterion>
+      <criterion>V5 proof validated by TaifoonMMRVerifier for every fill</criterion>
+      <criterion>Finality type routing handled per chain (PoS, OP-stack, GRANDPA, etc.)</criterion>
+    </acceptance>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="solver-profit-calculator" tier="MEDIUM" category="solver-engine" status="OPEN">
+    <title>Solver — profit calculator (fees − gas − liquidity)</title>
+    <description>
+      Reads protocol fee schedule from solver_intel.json + protocol-fee-intel.json,
+      estimates gas via ethers-rs, computes liquidity cost (own=0, flash=bps,
+      LWC=fee), nets to USD. Rejects sub-$1 net.
+    </description>
+    <reviewers>open-mamba/oracle-checker,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <!-- Protocol adapters: 3 already shipped via taifoon-eco, 6 to build -->
+
+  <bounty id="solver-adapter-across" tier="HIGH" category="solver-adapter" status="MERGED">
+    <title>Solver adapter — Across V3 (fillV3Relay)</title>
+    <description>Existing AcrossAdapter.sol in taifoon-eco/contracts/adapters/. Wired to TaifoonUniversalOperator.</description>
+    <merged_at>2026-04-15</merged_at>
+  </bounty>
+
+  <bounty id="solver-adapter-debridge" tier="HIGH" category="solver-adapter" status="MERGED">
+    <title>Solver adapter — deBridge DLN (fulfillOrder)</title>
+    <description>Existing DeBridgeAdapter.sol in taifoon-eco/contracts/adapters/. Wired.</description>
+    <merged_at>2026-04-22</merged_at>
+  </bounty>
+
+  <bounty id="solver-adapter-lambda" tier="HIGH" category="solver-adapter" status="MERGED">
+    <title>Solver adapter — Taifoon Lambda (LWC instant-claim)</title>
+    <description>Existing LiquidityWellCompactV2.sol. Executor-bid model, instant-claim path verified.</description>
+    <merged_at>2026-04-28</merged_at>
+  </bounty>
+
+  <bounty id="solver-adapter-mayan-swift" tier="HIGH" category="solver-adapter" status="OPEN">
+    <title>Solver adapter — Mayan Swift (auction winner fulfill)</title>
+    <description>
+      Build MayanSwiftAdapter.sol against IMayanSwap. Auction model:
+      bid/win, then single fulfill. Cross-VM ready (EVM ↔ Solana).
+    </description>
+    <reviewers>open-mamba/evm-replay,open-mamba/sol-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="solver-adapter-relay" tier="HIGH" category="solver-adapter" status="OPEN">
+    <title>Solver adapter — Relay.link (RFQ fast-fill)</title>
+    <description>RelayAdapter.sol against IRelayProtocol. RFQ model, p95 fill &lt;30s.</description>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="solver-adapter-stargate" tier="HIGH" category="solver-adapter" status="OPEN">
+    <title>Solver adapter — Stargate V2 (pool rebalancing)</title>
+    <description>StargateAdapter.sol against IStargateV2. Pool-utilisation aware fill, exploits delta-credit imbalance for profit.</description>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="solver-adapter-cctp" tier="MEDIUM" category="solver-adapter" status="OPEN">
+    <title>Solver adapter — Circle CCTP (attestation-routed mint)</title>
+    <description>CCTPAdapter.sol with Circle attestation polling. Lock-mint path, 900-1500s delivery.</description>
+    <reviewers>open-mamba/evm-replay,open-mamba/oracle-checker</reviewers>
+  </bounty>
+
+  <bounty id="solver-adapter-hyperlane" tier="MEDIUM" category="solver-adapter" status="OPEN">
+    <title>Solver adapter — Hyperlane (Process(messageId))</title>
+    <description>HyperlaneAdapter.sol against IHyperlane. Generic message + warp-route wrap. Reimbursement + premium economics.</description>
+    <reviewers>open-mamba/evm-replay,open-mamba/cosmos-replay</reviewers>
+  </bounty>
+
+  <bounty id="solver-adapter-connext" tier="MEDIUM" category="solver-adapter" status="OPEN">
+    <title>Solver adapter — Connext / Everclear (netting settlement)</title>
+    <description>ConnextAdapter.sol. Spread-based profit from input/output amount delta. Sequencer-fill path.</description>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <bounty id="solver-mempool-watcher" tier="MEDIUM" category="solver-engine" status="OPEN">
+    <title>Solver — competing-fill mempool watcher</title>
+    <description>Watch destination-chain mempool for competing fills, abandon ours pre-broadcast to avoid gas-loss races (Across, deBridge first-fill-wins).</description>
+    <reviewers>open-mamba/evm-replay</reviewers>
+  </bounty>
+
+  <bounty id="solver-inventory-rebalancer" tier="MEDIUM" category="solver-engine" status="OPEN">
+    <title>Solver — cross-chain inventory rebalancer</title>
+    <description>Auto-rebalance own-funds inventory across chains using cheapest available bridge. Triggered when chain-balance falls below threshold.</description>
+    <reviewers>open-mamba/evm-replay,open-mamba/schema-conformer</reviewers>
+  </bounty>
+
+  <!-- Aggregate for /api/intel/bounties endpoint -->
+  <stats>
+    <count tier="FLAGSHIP" total="3"  open="3"/>
+    <count tier="HIGH"     total="8"  open="5"  merged="3"/>
+    <count tier="MEDIUM"   total="19" open="18" blocked="1"/>
+    <count tier="LOW"      total="13" open="12" merged="1"/>
+    <count tier="PLATFORM" total="2"  open="2"/>
+  </stats>
+
+</bounties>

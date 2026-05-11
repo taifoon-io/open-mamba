@@ -1,0 +1,794 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ╔═══════════════════════════════════════════════════════════════════════════╗
+  ║  builders-program.xml — Taifoon Builders Program master roadmap            ║
+  ║  Owner: yawningmonsoon | Generated: 2026-05-08 | Spec version: 1.0        ║
+  ║                                                                             ║
+  ║  CANONICAL SOURCE OF TRUTH for every delivery in the Builders Program.    ║
+  ║                                                                             ║
+  ║  Replaces / supersedes:                                                    ║
+  ║    - bounties.xml          (now: <category id="bounties"> subset)         ║
+  ║    - PROTOCOL_COVERAGE_ROADMAP.md  (Phase 5/6 → <delivery> entries)        ║
+  ║    - ad-hoc TODOs in BUILDERS_PROGRAM.md §8                                ║
+  ║                                                                             ║
+  ║  Consumed by:                                                              ║
+  ║    - taifoon-next/scripts/sync-roadmap.mjs  → public/data/roadmap.json    ║
+  ║    - taifoon-next/src/app/builders/roadmap/  (live renderer)              ║
+  ║    - open-mamba/orchestrator.py             (auto-creates bounties from   ║
+  ║                                              <delivery_loop> outputs)     ║
+  ║    - taifoon-eco/contracts/registry/BuildersRegistry.sol                  ║
+  ║                                              (delivery_id → bounty_id)    ║
+  ║                                                                             ║
+  ║  Sourcing legend (matches Wavestone-class corporate-buy framework):        ║
+  ║    🛒  buy from named vendor (commercial SLA, enterprise contract)         ║
+  ║    🔓  open source — eligible for community contribution + redistribution  ║
+  ║    🔧  build internally — Taifoon platform code, not redistributed         ║
+  ║    🔒  AWS / cloud-managed — vendor lock-in flagged for re-evaluation      ║
+  ║    ⭐  recommended primary choice                                           ║
+  ║    ⚠️  decision carries enterprise risk — must clear COE review            ║
+  ║                                                                             ║
+  ║  Phase legend:                                                              ║
+  ║    Ph.1  ship by Q3 2026 — required for Builders Program GA                ║
+  ║    Ph.2  ship by Q1 2027 — production-hardening, federated orchestration   ║
+  ║    Ph.3  ship by Q3 2027 — autonomous COMPOUND tier (self-extending loop)  ║
+  ║                                                                             ║
+  ║  COE gate:                                                                  ║
+  ║    A delivery marked coe_gate="true" cannot auto-merge. Center of          ║
+  ║    Excellence review required. Used for: regulatory-impacting changes,    ║
+  ║    new reviewer agents, protocol-bridge expansions.                       ║
+  ║                                                                             ║
+  ║  License posture:                                                          ║
+  ║    Default: TSUL (Taifoon Sustainable Intelligence License — fair-code,    ║
+  ║    n8n-pattern). Permits internal commercial use; restricts hosted         ║
+  ║    competing-service redistribution. Per-delivery <license> may override   ║
+  ║    to Apache 2.0 / MIT for community-OSS items.                            ║
+  ║                                                                             ║
+  ║  Regulatory frameworks covered: EU AI Act (Art. 9, 10, 11, 13, 14, 15),    ║
+  ║  NIST AI RMF (GOVERN, MAP, MEASURE, MANAGE), ISO/IEC 42001:2023, NAIC      ║
+  ║  Model Bulletin (Insurance LOBs), GDPR Art. 5/25/32.                       ║
+  ╚═══════════════════════════════════════════════════════════════════════════╝
+-->
+<builders_program version="1.0" project="taifoon" generated="2026-05-08" owner="yawningmonsoon"
+                  charter_url="BUILDERS_PROGRAM.md"
+                  governance_url="BUILDERS_PROGRAM_GOVERNANCE.md">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       GOVERNANCE — meta-controls applied to every delivery
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <governance>
+    <coe>
+      <description>
+        Center of Excellence. 5-seat board: Platform Lead, Compliance Lead, External
+        Auditor, Reviewer-Agent Steward, Community Steward. Quorum = 3. Reviews
+        delivery promotions, regulatory-impacting changes, new reviewer agents,
+        protocol-bridge surface changes, and any delivery flagged ⚠️.
+      </description>
+      <triggers>
+        <trigger>delivery.coe_gate="true"</trigger>
+        <trigger>reviewer-agent registration</trigger>
+        <trigger>BuildersRegistry.sol upgrade</trigger>
+        <trigger>regulatory framework added or modified</trigger>
+        <trigger>licensing change to any &#x1F507;&#x1F513; component</trigger>
+        <trigger>upheld challenge → re-certification</trigger>
+      </triggers>
+      <sla>
+        <review_window_hours>72</review_window_hours>
+        <emergency_review_window_hours>4</emergency_review_window_hours>
+        <quarterly_audit>required</quarterly_audit>
+      </sla>
+    </coe>
+
+    <phases>
+      <phase id="Ph.1" name="BUILD"     target_date="2026-09-30" description="Builders Program GA — bounty board, reviewer fleet, escrow, OSS adapter loop"/>
+      <phase id="Ph.2" name="GOVERN"    target_date="2027-03-31" description="Federated orchestration, data lineage, COE re-certification, EU AI Act audit"/>
+      <phase id="Ph.3" name="EVOLVE"    target_date="2027-09-30" description="Self-extending delivery loop, autonomous skill-library promotion, multi-LOB isolation"/>
+      <phase id="Ph.4" name="COMPOUND"  target_date="continuous" description="Steady-state compound: Builders Program funds and extends itself via revenue share"/>
+    </phases>
+
+    <!--
+      Economic model: pure donut economics under TSUL.
+
+      No upfront grant. No prize. No synthetic token.
+
+      A 49 bps donut is skimmed at settlement on every paid call / fill that
+      flows through Taifoon, then auto-routed:
+        70%  Creator       — the contributor whose adapter produced value
+        20%  Reviewers     — PASS-voting reviewer agents that certified it
+        10%  Ecosystem     — COE operations, audits, infra
+
+      Performance only. A creator earns only if their work ships traffic.
+      Reviewers earn only if their certifications survive challenge AND keep
+      producing fills. Treasury fills only when the platform serves paid demand.
+
+      Volume tier denotes expected throughput class, not an amount. Higher
+      tier = larger expected donut slice over time, scaling with adapter
+      adoption. License posture mirrors n8n's Sustainable Use License with
+      one structural addition: the donut routing is enforced on-chain in
+      BuildersRegistry, so any TSUL fork that runs the canonical contract
+      kicks revenue back to the original creator/reviewer cohort.
+    -->
+    <license_posture default="TSUL">
+      <license id="TSUL"       url="LICENSE-TSUL.md"    description="Taifoon Sustainable Use License — fair-code, n8n-pattern. Source-available; internal commercial use free; hosted-competing-service restricted."/>
+      <license id="Apache-2.0" url="LICENSE-APACHE.txt" description="Permissive OSS — used for client SDKs, schemas, adapters."/>
+      <license id="MIT"        url="LICENSE-MIT.txt"    description="Permissive OSS — used for templates, examples."/>
+      <license id="ENTERPRISE" url="LICENSE-ENT.md"     description="Commercial enterprise license — removes TSUL hosted-service restriction. Required for SaaS partners offering managed Taifoon Intel."/>
+    </license_posture>
+
+    <regulatory_frameworks>
+      <framework id="EU_AI_ACT"           articles="Art.9,Art.10,Art.11,Art.13,Art.14,Art.15"  description="Risk-management, data quality, technical documentation, transparency, human oversight, accuracy"/>
+      <framework id="NIST_AI_RMF"         subcategories="GOVERN,MAP,MEASURE,MANAGE"           description="NIST AI Risk Management Framework 1.0"/>
+      <framework id="ISO_IEC_42001"       version="2023"                                       description="AI management system — Annex A controls"/>
+      <framework id="NAIC_MODEL_BULLETIN" scope="insurance"                                    description="US insurance LOB AI guidance"/>
+      <framework id="GDPR"                articles="Art.5,Art.25,Art.32"                       description="Privacy-by-design, security of processing"/>
+      <framework id="SOC2"                trust_criteria="Security,Availability,Confidentiality" description="Annual Type II audit"/>
+    </regulatory_frameworks>
+
+    <data_classification>
+      <class id="PUBLIC"   description="Open-data, on-chain commitments, public docs"/>
+      <class id="INTERNAL" description="Telemetry, contributor metadata (consent-gated)"/>
+      <class id="CONFIDENTIAL" description="Submission tarballs pre-merge, reviewer signing keys"/>
+      <class id="RESTRICTED"   description="Wallet-identity links (never persisted), HSM key material"/>
+    </data_classification>
+  </governance>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       STACK — chosen tools per platform category, matching the corporate
+       buy/build/OSS framework. Each entry: vendor, role, alternatives.
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <stack>
+
+    <category id="protocol_bridge" phase="Ph.1" coe_gate="true" sourcing="&#x1F6D2;&#x1F513;">
+      <description>
+        Exposes Taifoon Builders Program over MCP, A2A, and REST. Any external
+        agent platform (Palantir AIP, Vertex, Copilot Studio, custom) connects
+        without bespoke integration.
+      </description>
+      <primary star="true">Solo.io Kgateway (Envoy-based, Apache 2.0, FIPS-compliant, mTLS)</primary>
+      <alternatives>
+        <alt>Kong Gateway (OSS/commercial, plugin ecosystem)</alt>
+        <alt>Apigee (Google enterprise API management)</alt>
+        <alt warning="true">AWS API Gateway + Lambda (simpler, higher lock-in)</alt>
+        <alt warning="true">CAIPE protocol adapters (OSS Community only — no enterprise SLA)</alt>
+      </alternatives>
+      <ph1_scope>REST + MCP</ph1_scope>
+      <ph2_scope>A2A mesh via SPIFFE/SPIRE</ph2_scope>
+    </category>
+
+    <category id="external_agent_registry" phase="Ph.1" sourcing="&#x1F6D2;">
+      <description>
+        Registers agents built on external platforms so Taifoon Agent Core can
+        invoke them in governed deliveries. Discovery, health signalling,
+        capability declaration with scoped whitelist.
+      </description>
+      <primary star="true">Solo.io Agentregistry (extends to external agents via MCP)</primary>
+      <alternatives>
+        <alt>Google Agent Space (if GCP primary)</alt>
+        <alt>Microsoft Copilot Studio connector catalog (if Azure-heavy)</alt>
+        <alt warning="true">DynamoDB (key-value only — no discovery/health/capability semantics)</alt>
+      </alternatives>
+    </category>
+
+    <category id="federated_orchestration" phase="Ph.2" sourcing="&#x1F6D2;&#x1F527;">
+      <description>
+        Orchestrates Builders Program deliveries across agents regardless of
+        origin platform. Every cross-platform call logged to the Audit Trail.
+      </description>
+      <primary star="true">Step Functions + EventBridge + Protocol Bridge routing</primary>
+      <alternatives>
+        <alt>Temporal (cross-service durable workflows, stronger guarantees)</alt>
+        <alt>MuleSoft (enterprise integration)</alt>
+        <alt>Apache Camel (OSS integration patterns)</alt>
+        <alt warning="true">CAIPE LangGraph with external tool nodes (Community only — no enterprise SLA)</alt>
+      </alternatives>
+      <integration_requirement>
+        Palantir Foundry/AIP POC connectivity demonstrated before Ph.2 GA.
+      </integration_requirement>
+    </category>
+
+    <category id="data_access_layer" phase="Ph.1" coe_gate="true" sourcing="&#x1F6D2;&#x1F513;">
+      <description>
+        Per-agent permissions declared at certificate-time, enforced at runtime.
+        No permission = request blocked + logged.
+      </description>
+      <primary star="true">IAM roles per agent (declared in BuildersRegistry) + OPA sidecar runtime enforcement</primary>
+      <alternatives>
+        <alt>HashiCorp Vault (dynamic secrets + fine-grained access)</alt>
+        <alt>Styra DAS (commercial OPA management)</alt>
+        <alt>Azure AD + RBAC (multi-cloud)</alt>
+        <alt>Okta (identity federation)</alt>
+      </alternatives>
+    </category>
+
+    <category id="data_classification" phase="Ph.2" sourcing="&#x1F6D2;">
+      <description>Classifies submission shards + telemetry by sensitivity and contributor consent class.</description>
+      <primary star="true">Amazon Comprehend (PII/sensitive) + Bedrock Guardrails (content)</primary>
+      <alternatives>
+        <alt star="true">Microsoft Purview (multi-cloud — buy if M365 licensed)</alt>
+        <alt>BigID</alt>
+        <alt>Varonis</alt>
+        <alt>Collibra</alt>
+      </alternatives>
+    </category>
+
+    <category id="lob_isolation" phase="Ph.1" sourcing="&#x1F6D2;">
+      <description>Infrastructure-level separation between contributor LOBs / customer tenants.</description>
+      <primary star="true">VPC per LOB + security groups (cross-LOB blocked at network layer)</primary>
+      <alternatives>
+        <alt>Cilium (eBPF-based network policy, stronger than security groups)</alt>
+        <alt>Istio (service mesh with L7 isolation)</alt>
+        <alt>NSX-T (VMware, hybrid cloud)</alt>
+      </alternatives>
+    </category>
+
+    <category id="data_lineage" phase="Ph.2" sourcing="&#x1F6D2;&#x1F513;">
+      <description>Traces every adapter decision back to source dataset, replay set, fixture version.</description>
+      <primary star="true">OpenLineage + Marquez backend (LF AI &amp; Data graduation-stage OSS)</primary>
+      <alternatives>
+        <alt>Collibra (commercial vendor-neutral lineage)</alt>
+        <alt>DataHub (LinkedIn-originated OSS)</alt>
+        <alt>Atlan (commercial modern UI)</alt>
+        <alt star="true">Microsoft Purview (if M365 licensed)</alt>
+        <alt warning="true">Custom Neptune graph (expensive — no out-of-box Spark/dbt/Airflow integration)</alt>
+      </alternatives>
+    </category>
+
+    <category id="kb_governance" phase="Ph.2" sourcing="&#x1F6D2;">
+      <description>Approval/versioning/refresh-trigger/audit for every replay set and reference fixture corpus.</description>
+      <primary star="true">S3 versioning + Glue Data Catalog</primary>
+      <alternatives>
+        <alt>Alation (enterprise data catalog)</alt>
+        <alt>Collibra</alt>
+        <alt>dbt</alt>
+        <alt>Databricks Unity Catalog</alt>
+      </alternatives>
+    </category>
+
+    <category id="training_data_governance" phase="Ph.1" coe_gate="true" sourcing="&#x1F6D2;">
+      <description>
+        Every replay set / training dataset approved, versioned, hash-linked to
+        the corresponding adapter certificate. Datasets cannot be modified after
+        certification (immutable).
+      </description>
+      <primary star="true">Glue Data Catalog + S3 Object Lock (certificate links to S3 version URI + sha256)</primary>
+      <alternatives>
+        <alt>DVC (Data Version Control — Git for data, OSS)</alt>
+        <alt>Pachyderm (OSS data versioning + lineage)</alt>
+        <alt>Delta Lake (if Databricks)</alt>
+        <alt>AWS Lake Formation (column-level access)</alt>
+      </alternatives>
+    </category>
+
+    <category id="orchestration_registry" phase="Ph.2" sourcing="&#x1F527;">
+      <description>Approved Builders Program orchestration patterns — COE-governed via PR.</description>
+      <primary star="true">DynamoDB table + git monorepo (COE approves via PR)</primary>
+      <alternatives>
+        <alt>Backstage (richer catalog UI + plugin ecosystem)</alt>
+        <alt>Confluence (lightweight, Phase 1 pragmatic)</alt>
+        <alt>GitHub wiki with structured templates</alt>
+      </alternatives>
+    </category>
+
+    <category id="responsible_ai" phase="Ph.1" coe_gate="true" sourcing="&#x1F6D2;&#x1F527;">
+      <description>
+        Bias detection, explainability, regulatory audit reporting. Content
+        filters + policy-as-code alone do NOT satisfy this — Credo AI carries
+        the regulatory-reporting load.
+      </description>
+      <primary star="true">Credo AI GAIA — primary (NAIC, EU AI Act, NIST AI RMF, ISO 42001 policy packs) + Bedrock Guardrails (content) + OPA (policy-as-code)</primary>
+      <alternatives>
+        <alt>Arthur AI (model monitoring + bias detection)</alt>
+        <alt>IBM OpenScale</alt>
+        <alt>Microsoft Responsible AI Toolbox (OSS)</alt>
+        <alt warning="true">Bedrock Guardrails + OPA only (covers content filtering — NOT bias detection / explainability / regulatory audit reporting)</alt>
+      </alternatives>
+    </category>
+
+    <category id="ip_protection" phase="Ph.1" sourcing="&#x1F6D2;">
+      <description>Encryption + access control for adapter source, reviewer signing keys, replay sets.</description>
+      <primary star="true">AWS KMS + S3 bucket policies (LOB-scoped) + adapter manifests treated as confidential IP</primary>
+      <alternatives>
+        <alt>HashiCorp Vault (cross-cloud key management)</alt>
+        <alt>Azure Key Vault</alt>
+        <alt>Thales Luna HSM (highest assurance)</alt>
+        <alt>GCP Cloud KMS</alt>
+      </alternatives>
+    </category>
+
+  </stack>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       8-DIMENSION EVALUATION — every adapter / reviewer / agent passes this
+       matrix on every certification or re-certification cycle.
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <evaluation_dimensions>
+
+    <dimension id="1_accuracy_quality" sourcing="&#x1F6D2;&#x1F513;">
+      <name>Accuracy &amp; Quality</name>
+      <primary star="true">LLM-as-judge (Bedrock Claude) over benchmark fixture set (10K+ historical fills per chain)</primary>
+      <alternatives>
+        <alt>Ragas (OSS RAG eval)</alt>
+        <alt>Braintrust</alt>
+        <alt>Arize AI Phoenix</alt>
+      </alternatives>
+      <pass_threshold>schema-exact match on &gt;=99.5% of fixtures</pass_threshold>
+    </dimension>
+
+    <dimension id="2_security" sourcing="&#x1F513;&#x1F6D2;">
+      <name>Security</name>
+      <primary star="true">Garak red-teaming framework + Taifoon adversarial prompt suite</primary>
+      <alternatives>
+        <alt>PromptFoo (OSS)</alt>
+        <alt>Lakera Guard</alt>
+        <alt>Protect AI Guardian</alt>
+      </alternatives>
+      <pass_threshold>0 successful injection / bypass on full suite</pass_threshold>
+    </dimension>
+
+    <dimension id="3_infrastructure_compliance" sourcing="&#x1F513;">
+      <name>Infrastructure Compliance</name>
+      <primary star="true">OPA policy check against k8s pod spec + IAM role</primary>
+      <alternatives>
+        <alt>Checkov (OSS, multi-cloud)</alt>
+        <alt>KICS (OSS, Checkmarx-backed)</alt>
+        <alt>Terrascan (OSS, OPA-based)</alt>
+        <alt>CDK Nag (AWS-specific)</alt>
+      </alternatives>
+      <pass_threshold>0 HIGH-severity findings</pass_threshold>
+    </dimension>
+
+    <dimension id="4_regulatory_compliance" sourcing="&#x1F6D2;">
+      <name>Regulatory Compliance</name>
+      <primary star="true">Credo AI GAIA — automated policy-pack evaluation (EU AI Act, NIST AI RMF, ISO 42001)</primary>
+      <alternatives>
+        <alt>ServiceNow GRC</alt>
+        <alt>RSA Archer</alt>
+      </alternatives>
+      <pass_threshold>100% policy-pack compliance for the adapter's deployment LOB</pass_threshold>
+    </dimension>
+
+    <dimension id="5_data_governance" sourcing="&#x1F513;">
+      <name>Data Governance</name>
+      <primary star="true">Lineage completeness check via OpenLineage + Marquez</primary>
+      <alternatives>
+        <alt warning="true">Neptune Analytics (graph queries — expensive)</alt>
+        <alt>Collibra</alt>
+        <alt>DataHub</alt>
+      </alternatives>
+      <pass_threshold>every output event traces to source replay set + fixture index</pass_threshold>
+    </dimension>
+
+    <dimension id="6_guardrail_adherence" sourcing="&#x1F513;&#x1F6D2;">
+      <name>Guardrail Adherence</name>
+      <primary star="true">Boundary-case adversarial test suite — no bypass on any input class</primary>
+      <alternatives>
+        <alt>Lakera Guard</alt>
+        <alt>Azure Content Safety</alt>
+        <alt>Llama Guard</alt>
+      </alternatives>
+      <pass_threshold>0 guardrail bypass on the canonical 10K-input adversarial suite</pass_threshold>
+    </dimension>
+
+    <dimension id="7_economic_soundness" sourcing="&#x1F527;">
+      <name>Economic Soundness</name>
+      <primary star="true">Replay-vs-on-chain fee reconciliation + revenue-share simulation</primary>
+      <alternatives>
+        <alt>Custom Foundry test suite per protocol</alt>
+      </alternatives>
+      <pass_threshold>fee_bps_observed within ±25bps of fee_bps_documented; revenue-share routing math verified on testnet</pass_threshold>
+    </dimension>
+
+    <dimension id="8_operational_readiness" sourcing="&#x1F513;&#x1F527;">
+      <name>Operational Readiness</name>
+      <primary star="true">Telemetry coverage + on-call runbook + rollback plan attached to certificate</primary>
+      <alternatives>
+        <alt>Datadog</alt>
+        <alt>Grafana Cloud</alt>
+        <alt>Honeycomb</alt>
+      </alternatives>
+      <pass_threshold>SLO defined; rollback &lt; 60s; runbook reviewed by Reviewer-Agent Steward</pass_threshold>
+    </dimension>
+
+  </evaluation_dimensions>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       DELIVERY LOOP — explicit feedback edges. The roadmap delivers itself.
+       Each <edge> says: when delivery N produces <output>, it auto-creates
+       deliveries of type <generates> (handled by orchestrator.py).
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <delivery_loop>
+    <description>
+      The Builders Program is self-extending. Six feedback loops mean every
+      shipped delivery produces inputs that automatically generate more
+      deliveries — without human triage. COE retains kill-switch authority on
+      every loop (via &lt;coe_gate&gt;).
+    </description>
+
+    <edge id="loop-1-anomaly-to-fix">
+      <name>Anomaly → Fix Bounty</name>
+      <source_delivery>anomaly-scanner-agent</source_delivery>
+      <output>fix_bounty_v1 record (protocol, chain, observed_divergence, severity)</output>
+      <generates>delivery type="bounty" category="decoder-gap" tier from severity</generates>
+      <automation>autonomous</automation>
+      <coe_gate>false</coe_gate>
+      <sla_to_publish_hours>1</sla_to_publish_hours>
+    </edge>
+
+    <edge id="loop-2-protocol-upgrade-to-refresh">
+      <name>Protocol Upgrade → Adapter Refresh Bounty</name>
+      <source_delivery>protocol-upgrade-detector</source_delivery>
+      <output>upgrade_event_v1 (protocol, new_version, breaking_change_flag)</output>
+      <generates>delivery type="bounty" category="decoder-refresh" tier="MEDIUM"</generates>
+      <automation>autonomous</automation>
+      <coe_gate>false</coe_gate>
+      <right_of_first_refusal_hours>72</right_of_first_refusal_hours>
+    </edge>
+
+    <edge id="loop-3-perf-regression-to-bounty">
+      <name>Performance Regression → Optimisation Bounty</name>
+      <source_delivery>telemetry-harness</source_delivery>
+      <output>regression_v1 (adapter_id, p95_delta_ms, started_at)</output>
+      <generates>delivery type="bounty" category="optimisation" tier="LOW"</generates>
+      <automation>autonomous</automation>
+      <coe_gate>false</coe_gate>
+    </edge>
+
+    <edge id="loop-4-skill-extraction">
+      <name>Common-Pattern → Skill-Library Promotion</name>
+      <source_delivery>pattern-miner-agent</source_delivery>
+      <output>skill_candidate_v1 (pattern, frequency, supporting_adapters[])</output>
+      <generates>delivery type="skill_promotion" — extracted, certified, published</generates>
+      <automation>semi-autonomous</automation>
+      <coe_gate>true</coe_gate>
+      <description>Common patterns across LOBs become Skill Library entries; next contributor starts from certified blocks.</description>
+    </edge>
+
+    <edge id="loop-5-reviewer-evolution">
+      <name>Inconclusive Verdict → New Reviewer Bounty</name>
+      <source_delivery>orchestrator</source_delivery>
+      <output>inconclusive_pattern_v1 (frequency &gt;= 5, scope_gap_description)</output>
+      <generates>delivery type="reviewer-agent" tier="PLATFORM"</generates>
+      <automation>semi-autonomous</automation>
+      <coe_gate>true</coe_gate>
+    </edge>
+
+    <edge id="loop-6-revenue-to-treasury-to-bounties">
+      <name>Adapter Revenue → Treasury → New Bounty Funding</name>
+      <source_delivery>BuildersRegistry.recordRevenueTouch</source_delivery>
+      <output>protocol fee accrual to treasury</output>
+      <generates>BountyEscrow.fund() of next-priority bounty per <funding_policy/></generates>
+      <automation>autonomous (after Ph.4)</automation>
+      <coe_gate>false</coe_gate>
+      <funding_policy>quarterly: 20% to high-severity gap closure, 30% to FLAGSHIP queue, 30% to platform-tier deliveries, 20% to reviewer stake top-up</funding_policy>
+    </edge>
+  </delivery_loop>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       DELIVERIES — every line item, grouped by phase. References:
+         - bounty deliveries cross-link to bounties.xml
+         - platform deliveries to PROTOCOL_COVERAGE_ROADMAP.md
+         - governance deliveries to BUILDERS_PROGRAM_GOVERNANCE.md
+       Each <delivery> carries: phase, sourcing, oss, coe_gate, evaluation
+       dimensions covered, regulatory frameworks satisfied.
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <deliveries>
+
+    <!-- ─── Phase 1: BUILD — Builders Program GA ───────────────────────── -->
+
+    <delivery id="d-build-bounty-board" phase="Ph.1" sourcing="&#x1F527;" oss="yes" license="Apache-2.0" coe_gate="false" status="SHIPPED">
+      <title>Bounty board + registry XML</title>
+      <description>Public bounty board at taifoon.io/builders/bounties. Source: bounties.xml (41 bounties seeded).</description>
+      <delivers>bounties.xml, taifoon-next/src/app/builders/bounties/, /api/intel/bounties</delivers>
+      <evaluates>5_data_governance, 8_operational_readiness</evaluates>
+      <regulatory>EU_AI_ACT/Art.13, NIST_AI_RMF/MAP</regulatory>
+      <merged_at>2026-05-08</merged_at>
+    </delivery>
+
+    <delivery id="d-build-reviewer-fleet" phase="Ph.1" sourcing="&#x1F513;&#x1F527;" oss="yes" license="Apache-2.0" coe_gate="true" status="IN_PROGRESS">
+      <title>open-mamba reviewer fleet (orchestrator + 11 reviewers)</title>
+      <description>Two-of-N concurrence pipeline. Reference reviewers: evm-replay, schema-conformer.</description>
+      <delivers>open-mamba/orchestrator.py, agents/, reviewers.xml, verdict_schemas/</delivers>
+      <evaluates>1_accuracy_quality, 2_security, 6_guardrail_adherence</evaluates>
+      <regulatory>EU_AI_ACT/Art.14, NIST_AI_RMF/MEASURE, ISO_IEC_42001</regulatory>
+      <coe_review_required>reviewer registration, slash decisions</coe_review_required>
+    </delivery>
+
+    <delivery id="d-build-on-chain-registry" phase="Ph.1" sourcing="&#x1F527;" oss="yes" license="MIT" coe_gate="true" status="IN_PROGRESS">
+      <title>BuildersRegistry.sol + BountyEscrow.sol</title>
+      <description>On-chain bounty / submission / verdict / revenue-share registry on Taifoon devnet.</description>
+      <delivers>taifoon-eco/contracts/registry/BuildersRegistry.sol, BountyEscrow.sol</delivers>
+      <evaluates>3_infrastructure_compliance, 7_economic_soundness</evaluates>
+      <regulatory>EU_AI_ACT/Art.11, NIST_AI_RMF/GOVERN</regulatory>
+      <coe_review_required>contract upgrade, slash slash policy changes</coe_review_required>
+    </delivery>
+
+    <delivery id="d-build-protocol-bridge-rest-mcp" phase="Ph.1" sourcing="&#x1F6D2;&#x1F513;" oss="partial" license="TSUL" coe_gate="true" status="OPEN">
+      <title>Protocol Bridge — REST + MCP surface</title>
+      <description>Solo.io Kgateway exposing Builders Program over REST + MCP. n8n / Vertex / Copilot Studio ready.</description>
+      <stack_ref>protocol_bridge</stack_ref>
+      <evaluates>3_infrastructure_compliance, 8_operational_readiness</evaluates>
+      <regulatory>EU_AI_ACT/Art.13, SOC2/Security</regulatory>
+      <integration_requirement>Palantir AIP POC connectivity demonstrated</integration_requirement>
+    </delivery>
+
+    <delivery id="d-build-data-access-layer" phase="Ph.1" sourcing="&#x1F6D2;&#x1F513;" oss="partial" license="TSUL" coe_gate="true" status="OPEN">
+      <title>Data Access Layer (per-agent IAM + OPA)</title>
+      <description>Per-agent permissions in BuildersRegistry certificate; OPA sidecar runtime enforcement; deny-by-default.</description>
+      <stack_ref>data_access_layer</stack_ref>
+      <evaluates>2_security, 3_infrastructure_compliance, 5_data_governance</evaluates>
+      <regulatory>EU_AI_ACT/Art.15, GDPR/Art.25, NIST_AI_RMF/GOVERN</regulatory>
+    </delivery>
+
+    <delivery id="d-build-ip-protection" phase="Ph.1" sourcing="&#x1F6D2;" oss="no" license="ENTERPRISE" coe_gate="false" status="OPEN">
+      <title>IP Protection — adapter source + signing keys</title>
+      <description>AWS KMS encryption for adapter manifests; HSM-backed reviewer signing keys; LOB-scoped S3 policies.</description>
+      <stack_ref>ip_protection</stack_ref>
+      <evaluates>2_security</evaluates>
+      <regulatory>GDPR/Art.32, SOC2/Confidentiality</regulatory>
+    </delivery>
+
+    <delivery id="d-build-responsible-ai-baseline" phase="Ph.1" sourcing="&#x1F6D2;&#x1F527;" oss="partial" license="TSUL" coe_gate="true" status="OPEN">
+      <title>Responsible AI baseline (Credo AI + Bedrock Guardrails + OPA)</title>
+      <description>Bias detection, explainability, regulatory audit reporting via Credo AI GAIA. Bedrock Guardrails + OPA cover content + policy-as-code only.</description>
+      <stack_ref>responsible_ai</stack_ref>
+      <evaluates>4_regulatory_compliance, 6_guardrail_adherence</evaluates>
+      <regulatory>EU_AI_ACT/Art.9, NIST_AI_RMF/MEASURE, ISO_IEC_42001, NAIC_MODEL_BULLETIN</regulatory>
+      <coe_review_required>policy pack updates, fairness threshold changes</coe_review_required>
+      <warning>Content filters + policy-as-code alone do NOT constitute responsible AI governance.</warning>
+    </delivery>
+
+    <delivery id="d-build-training-data-governance" phase="Ph.1" sourcing="&#x1F6D2;" oss="no" license="ENTERPRISE" coe_gate="true" status="OPEN">
+      <title>Replay-set + training-data governance</title>
+      <description>Glue Data Catalog + S3 Object Lock. Each adapter certificate links to the exact replay-set sha256.</description>
+      <stack_ref>training_data_governance</stack_ref>
+      <evaluates>5_data_governance, 4_regulatory_compliance</evaluates>
+      <regulatory>EU_AI_ACT/Art.10, ISO_IEC_42001/Annex_A</regulatory>
+    </delivery>
+
+    <delivery id="d-build-lob-isolation" phase="Ph.1" sourcing="&#x1F6D2;" oss="no" license="ENTERPRISE" coe_gate="true" status="OPEN">
+      <title>LOB / customer-tenant isolation</title>
+      <description>VPC per tenant + security groups. Cross-LOB demonstrably blocked at network layer.</description>
+      <stack_ref>lob_isolation</stack_ref>
+      <evaluates>2_security, 3_infrastructure_compliance</evaluates>
+      <regulatory>SOC2/Security, GDPR/Art.32</regulatory>
+    </delivery>
+
+    <delivery id="d-build-bounty-corpus" phase="Ph.1" sourcing="&#x1F527;&#x1F513;" oss="yes" license="MIT" coe_gate="false" status="IN_PROGRESS">
+      <title>Bounty corpus — 41 seeded bounties</title>
+      <description>Every protocols.xml gap mapped to a bounty + 2 Surge flagships + Phase 5/6 + 5 dossiers.</description>
+      <delivers>bounties.xml</delivers>
+      <evaluates>1_accuracy_quality, 7_economic_soundness</evaluates>
+      <regulatory>EU_AI_ACT/Art.13</regulatory>
+      <merged_at>2026-05-08</merged_at>
+    </delivery>
+
+    <delivery id="d-build-adapter-template" phase="Ph.1" sourcing="&#x1F513;" oss="yes" license="MIT" coe_gate="false" status="SHIPPED">
+      <title>Adapter v1 template</title>
+      <delivers>templates/adapter-v1/</delivers>
+      <evaluates>1_accuracy_quality, 5_data_governance</evaluates>
+      <merged_at>2026-05-08</merged_at>
+    </delivery>
+
+    <!-- ─── Phase 1: BUILD — Carry-overs from PROTOCOL_COVERAGE_ROADMAP ─── -->
+
+    <delivery id="d-build-matrix-live-feed" phase="Ph.1" sourcing="&#x1F527;" oss="yes" license="Apache-2.0" coe_gate="false" status="OPEN">
+      <title>Matrix Live Feed (SSE) — Phase 5 of protocol coverage roadmap</title>
+      <delivers>/search-api/events/stream + RouteMatrix.tsx wiring</delivers>
+      <bounty_ref>matrix-sse-stream</bounty_ref>
+      <evaluates>8_operational_readiness</evaluates>
+    </delivery>
+
+    <delivery id="d-build-fee-verification" phase="Ph.1" sourcing="&#x1F527;" oss="partial" license="TSUL" coe_gate="true" status="OPEN">
+      <title>Fee Verification — Phase 6 of protocol coverage roadmap</title>
+      <delivers>per-protocol fee_bps_observed time series + signal: fee-discrepancy-bps</delivers>
+      <bounty_ref>fee-verification</bounty_ref>
+      <evaluates>1_accuracy_quality, 7_economic_soundness</evaluates>
+      <regulatory>EU_AI_ACT/Art.13</regulatory>
+    </delivery>
+
+    <!-- ─── Phase 2: GOVERN — production hardening ──────────────────────── -->
+
+    <delivery id="d-govern-federated-orchestration" phase="Ph.2" sourcing="&#x1F6D2;&#x1F527;" oss="partial" license="TSUL" coe_gate="true" status="OPEN">
+      <title>Federated orchestration across external agent platforms</title>
+      <description>Step Functions + EventBridge with Protocol Bridge routing. Palantir AIP POC required.</description>
+      <stack_ref>federated_orchestration</stack_ref>
+      <evaluates>3_infrastructure_compliance, 8_operational_readiness</evaluates>
+      <regulatory>NIST_AI_RMF/MANAGE, ISO_IEC_42001</regulatory>
+    </delivery>
+
+    <delivery id="d-govern-data-lineage" phase="Ph.2" sourcing="&#x1F6D2;&#x1F513;" oss="yes" license="Apache-2.0" coe_gate="false" status="OPEN">
+      <title>Data lineage — OpenLineage + Marquez</title>
+      <stack_ref>data_lineage</stack_ref>
+      <evaluates>5_data_governance</evaluates>
+      <regulatory>EU_AI_ACT/Art.10, GDPR/Art.5</regulatory>
+    </delivery>
+
+    <delivery id="d-govern-data-classification" phase="Ph.2" sourcing="&#x1F6D2;" oss="no" license="ENTERPRISE" coe_gate="true" status="OPEN">
+      <title>Data classification engine</title>
+      <stack_ref>data_classification</stack_ref>
+      <evaluates>5_data_governance, 2_security</evaluates>
+      <regulatory>GDPR/Art.5/25, EU_AI_ACT/Art.10</regulatory>
+    </delivery>
+
+    <delivery id="d-govern-kb-governance" phase="Ph.2" sourcing="&#x1F6D2;" oss="partial" license="TSUL" coe_gate="true" status="OPEN">
+      <title>KB / replay-set governance</title>
+      <stack_ref>kb_governance</stack_ref>
+      <evaluates>5_data_governance</evaluates>
+      <regulatory>EU_AI_ACT/Art.10</regulatory>
+    </delivery>
+
+    <delivery id="d-govern-orchestration-registry" phase="Ph.2" sourcing="&#x1F527;" oss="yes" license="Apache-2.0" coe_gate="true" status="OPEN">
+      <title>Orchestration registry — approved patterns</title>
+      <stack_ref>orchestration_registry</stack_ref>
+      <evaluates>3_infrastructure_compliance, 8_operational_readiness</evaluates>
+      <coe_review_required>every new pattern</coe_review_required>
+    </delivery>
+
+    <delivery id="d-govern-reviewer-recertification" phase="Ph.2" sourcing="&#x1F527;" oss="yes" license="Apache-2.0" coe_gate="true" status="OPEN">
+      <title>Reviewer agent re-certification cycle</title>
+      <description>Quarterly re-cert + on-demand triggers from upheld challenges. DynamoDB correction queue → SQS → Training Engine via EventBridge.</description>
+      <evaluates>1_accuracy_quality, 2_security, 4_regulatory_compliance, 6_guardrail_adherence</evaluates>
+      <regulatory>NIST_AI_RMF/MANAGE, ISO_IEC_42001</regulatory>
+      <coe_review_required>all re-certifications</coe_review_required>
+    </delivery>
+
+    <delivery id="d-govern-eu-ai-act-audit" phase="Ph.2" sourcing="&#x1F6D2;" oss="no" license="ENTERPRISE" coe_gate="true" status="OPEN">
+      <title>EU AI Act audit pipeline</title>
+      <description>Annual technical-documentation generation per Art.11; transparency disclosures per Art.13; human-oversight log per Art.14.</description>
+      <evaluates>4_regulatory_compliance</evaluates>
+      <regulatory>EU_AI_ACT/Art.11/13/14/15</regulatory>
+    </delivery>
+
+    <delivery id="d-govern-soc2-type2" phase="Ph.2" sourcing="&#x1F6D2;" oss="no" license="ENTERPRISE" coe_gate="true" status="OPEN">
+      <title>SOC 2 Type II annual audit</title>
+      <evaluates>2_security, 3_infrastructure_compliance, 8_operational_readiness</evaluates>
+      <regulatory>SOC2/Security/Availability/Confidentiality</regulatory>
+    </delivery>
+
+    <!-- ─── Phase 3: EVOLVE — autonomous self-extension ──────────────────── -->
+
+    <delivery id="d-evolve-anomaly-scanner" phase="Ph.3" sourcing="&#x1F527;" oss="partial" license="TSUL" coe_gate="false" status="OPEN">
+      <title>Anomaly scanner agent (loop-1 source)</title>
+      <description>Detects divergence between adapter output and on-chain ground truth; emits fix_bounty_v1.</description>
+      <generates_loop>loop-1-anomaly-to-fix</generates_loop>
+      <evaluates>1_accuracy_quality, 8_operational_readiness</evaluates>
+    </delivery>
+
+    <delivery id="d-evolve-protocol-upgrade-detector" phase="Ph.3" sourcing="&#x1F527;" oss="yes" license="Apache-2.0" coe_gate="false" status="OPEN">
+      <title>Protocol-upgrade detector (loop-2 source)</title>
+      <generates_loop>loop-2-protocol-upgrade-to-refresh</generates_loop>
+    </delivery>
+
+    <delivery id="d-evolve-telemetry-harness" phase="Ph.3" sourcing="&#x1F527;" oss="yes" license="Apache-2.0" coe_gate="false" status="OPEN">
+      <title>Telemetry harness — adapter perf + regression detection (loop-3 source)</title>
+      <generates_loop>loop-3-perf-regression-to-bounty</generates_loop>
+    </delivery>
+
+    <delivery id="d-evolve-pattern-miner" phase="Ph.3" sourcing="&#x1F527;" oss="partial" license="TSUL" coe_gate="true" status="OPEN">
+      <title>Pattern-miner agent — extracts skill-library candidates (loop-4 source)</title>
+      <generates_loop>loop-4-skill-extraction</generates_loop>
+      <coe_review_required>every skill promotion</coe_review_required>
+    </delivery>
+
+    <delivery id="d-evolve-skill-library" phase="Ph.3" sourcing="&#x1F527;" oss="yes" license="Apache-2.0" coe_gate="true" status="OPEN">
+      <title>Skill Library — certified building blocks for next contributor</title>
+      <description>Common patterns extracted, certified, published. Next adapter starts from certified, tested blocks.</description>
+      <evaluates>1_accuracy_quality, 8_operational_readiness</evaluates>
+    </delivery>
+
+    <delivery id="d-evolve-orchestration-library" phase="Ph.3" sourcing="&#x1F527;" oss="yes" license="Apache-2.0" coe_gate="true" status="OPEN">
+      <title>Orchestration Library — certified delivery patterns</title>
+      <evaluates>3_infrastructure_compliance</evaluates>
+    </delivery>
+
+    <delivery id="d-evolve-autonomous-funding" phase="Ph.3" sourcing="&#x1F527;" oss="no" license="ENTERPRISE" coe_gate="true" status="OPEN">
+      <title>Autonomous treasury funding (loop-6)</title>
+      <description>Quarterly: 20% to high-severity gap closure, 30% FLAGSHIP queue, 30% platform tier, 20% reviewer stake top-up.</description>
+      <generates_loop>loop-6-revenue-to-treasury-to-bounties</generates_loop>
+      <coe_review_required>policy ratio changes</coe_review_required>
+    </delivery>
+
+    <!-- ─── Phase 4: COMPOUND — steady state ─────────────────────────────── -->
+
+    <delivery id="d-compound-saas-multi-tenant" phase="Ph.4" sourcing="&#x1F6D2;&#x1F527;" oss="no" license="ENTERPRISE" coe_gate="true" status="PROPOSED">
+      <title>Builders Program as a SaaS — multi-tenant deployment</title>
+      <description>Plug-in for n8n, Vertex, Copilot Studio, Palantir AIP. Per-tenant LOB isolation, per-tenant treasury, per-tenant reviewer pool.</description>
+      <evaluates>2_security, 3_infrastructure_compliance, 8_operational_readiness</evaluates>
+      <regulatory>SOC2/Security/Availability/Confidentiality, ISO_IEC_42001</regulatory>
+    </delivery>
+
+    <delivery id="d-compound-reciprocal-skill-market" phase="Ph.4" sourcing="&#x1F527;" oss="partial" license="TSUL" coe_gate="true" status="PROPOSED">
+      <title>Reciprocal skill market — adapters trade across tenants</title>
+      <description>An adapter shipped on Tenant A can be licensed by Tenant B. Revenue routes back to original contributor.</description>
+    </delivery>
+
+  </deliveries>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       LICENSING MATRIX — clarifies what is open source, what is fair-code
+       (TSUL), what is enterprise-only.
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <licensing_matrix>
+    <open_source_eligible>
+      <component delivery="d-build-bounty-board"          license="Apache-2.0" rationale="Standard registry surface; community contributions welcomed"/>
+      <component delivery="d-build-bounty-corpus"         license="MIT"        rationale="Bounty list itself; should be forkable for derived programs"/>
+      <component delivery="d-build-adapter-template"      license="MIT"        rationale="Must be permissive — contributors fork into their own repos"/>
+      <component delivery="d-build-on-chain-registry"     license="MIT"        rationale="Smart contracts; standard for OSS contracts"/>
+      <component delivery="d-build-reviewer-fleet"        license="Apache-2.0" rationale="Reviewer logic should be auditable + forkable; reference impls only"/>
+      <component delivery="d-govern-data-lineage"         license="Apache-2.0" rationale="Built on OpenLineage / Marquez (LF AI &amp; Data OSS)"/>
+      <component delivery="d-govern-orchestration-registry" license="Apache-2.0" rationale="Pattern catalog; community submissions"/>
+      <component delivery="d-govern-reviewer-recertification" license="Apache-2.0" rationale="Re-cert harness should be transparent"/>
+      <component delivery="d-evolve-protocol-upgrade-detector" license="Apache-2.0" rationale="Public-utility tool — not Taifoon-specific"/>
+      <component delivery="d-evolve-telemetry-harness"    license="Apache-2.0" rationale="Standard observability tooling"/>
+      <component delivery="d-evolve-skill-library"        license="Apache-2.0" rationale="Skill blocks must be reusable cross-tenant"/>
+      <component delivery="d-evolve-orchestration-library" license="Apache-2.0" rationale="As above"/>
+    </open_source_eligible>
+
+    <fair_code_tsil>
+      <component delivery="d-build-protocol-bridge-rest-mcp"  rationale="MCP/A2A surface — restricts hosted competing service per TSUL"/>
+      <component delivery="d-build-data-access-layer"         rationale="Permission framework + OPA policies — restricts hosted competing service"/>
+      <component delivery="d-build-responsible-ai-baseline"   rationale="Bedrock + OPA wiring — restricts hosted competing service"/>
+      <component delivery="d-build-fee-verification"          rationale="Core revenue-attribution logic"/>
+      <component delivery="d-govern-federated-orchestration"  rationale="Cross-platform orchestration logic"/>
+      <component delivery="d-govern-kb-governance"            rationale="Replay-set version + approval workflows"/>
+      <component delivery="d-evolve-anomaly-scanner"          rationale="Anomaly detection logic — Taifoon-specific signals"/>
+      <component delivery="d-evolve-pattern-miner"            rationale="Skill-extraction algorithm"/>
+      <component delivery="d-compound-reciprocal-skill-market" rationale="Cross-tenant licensing engine"/>
+    </fair_code_tsil>
+
+    <enterprise_only>
+      <component delivery="d-build-ip-protection"             rationale="HSM-backed signing keys + KMS — operational concern, not redistributable"/>
+      <component delivery="d-build-training-data-governance"  rationale="Replay-set governance ties to AWS-managed S3 Object Lock + Glue"/>
+      <component delivery="d-build-lob-isolation"             rationale="VPC + security-group config — deployment-specific"/>
+      <component delivery="d-govern-data-classification"      rationale="Built on Comprehend + Bedrock Guardrails — vendor-specific"/>
+      <component delivery="d-govern-eu-ai-act-audit"          rationale="Reporting pipelines tied to Credo AI commercial policy packs"/>
+      <component delivery="d-govern-soc2-type2"               rationale="Audit artifacts are confidential"/>
+      <component delivery="d-evolve-autonomous-funding"       rationale="Treasury policy is governance-sensitive"/>
+      <component delivery="d-compound-saas-multi-tenant"      rationale="Multi-tenant deployment = the SaaS revenue surface"/>
+    </enterprise_only>
+  </licensing_matrix>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SAAS PARTNER INTEGRATION — explicit n8n / Vertex / Copilot Studio
+       plug-in surface. Each partner consumes the Protocol Bridge.
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <saas_partners>
+    <partner id="n8n" priority="1" status="planned">
+      <name>n8n.io</name>
+      <integration>n8n community node — exposes 6 actions: list_open_bounties, claim_bounty, submit_adapter, get_verdict, claim_revenue, register_reviewer.</integration>
+      <license>n8n Sustainable Use License (compatible with TSUL by design — same fair-code lineage)</license>
+      <delivery_ref>d-build-protocol-bridge-rest-mcp</delivery_ref>
+    </partner>
+    <partner id="vertex" priority="2" status="proposed">
+      <name>Google Vertex AI</name>
+      <integration>Vertex extension; A2A surface (Ph.2)</integration>
+      <delivery_ref>d-govern-federated-orchestration</delivery_ref>
+    </partner>
+    <partner id="copilot_studio" priority="2" status="proposed">
+      <name>Microsoft Copilot Studio</name>
+      <integration>Connector catalog entry; Azure-tenant LOB isolation</integration>
+      <delivery_ref>d-govern-federated-orchestration</delivery_ref>
+    </partner>
+    <partner id="palantir_aip" priority="1" status="poc_required">
+      <name>Palantir Foundry / AIP</name>
+      <integration>Protocol Bridge POC connectivity required before Ph.2 GA</integration>
+      <delivery_ref>d-govern-federated-orchestration</delivery_ref>
+    </partner>
+    <partner id="claude_mcp" priority="1" status="shipped">
+      <name>Claude / Anthropic MCP</name>
+      <integration>MCP manifest at taifoon.io/.well-known/mcp.json — list_open_bounties, get_bounty, list_reviewers</integration>
+      <delivery_ref>d-build-bounty-board</delivery_ref>
+    </partner>
+  </saas_partners>
+
+  <!-- Aggregate stats — read by /api/intel/roadmap -->
+  <stats>
+    <delivery_count phase="Ph.1" total="11" shipped="3" in_progress="3" open="5"/>
+    <delivery_count phase="Ph.2" total="7"  shipped="0" in_progress="0" open="7"/>
+    <delivery_count phase="Ph.3" total="6"  shipped="0" in_progress="0" open="6"/>
+    <delivery_count phase="Ph.4" total="2"  shipped="0" in_progress="0" proposed="2"/>
+    <delivery_count phase="ALL"  total="26" shipped="3" in_progress="3" open="18" proposed="2"/>
+    <oss_share open_source="12" fair_code="9" enterprise="8" total="29" oss_pct="41"/>
+    <coe_gated_share gated="14" total="26" pct="54"/>
+  </stats>
+
+</builders_program>

@@ -1,0 +1,30 @@
+apiVersion: v2
+name: mamba-nemotron-agw-adapter
+description: |
+  Governed NVIDIA Nemotron upstream provider for Solo.io Agentgateway.
+  Plugs into the Agent OS framework — capability registry, certification,
+  audit trail, lineage, observability — without writing Triton glue.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0"
+home: https://mamba.taifoon.dev
+sources:
+  - https://github.com/yawningmonsoon/open-mamba
+maintainers:
+  - name: yawningmonsoon
+    email: maciej@t3rn.io
+keywords:
+  - agent-os
+  - solo-io
+  - agentgateway
+  - nemotron
+  - nvidia
+  - llm-gateway
+  - governed-ai
+annotations:
+  agentos.io/component-slug: mamba-nemotron-agw-adapter
+  agentos.io/agent-os-slot: run-7-llm-gateway
+  agentos.io/decision-marker: buy-plus-build
+  agentos.io/phase: phase-1
+  agentos.io/licence: BSL-1.1

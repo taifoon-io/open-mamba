@@ -1,0 +1,12 @@
+{
+  "name": "mamba-nemotron-agw-adapter",
+  "short_name": "mamba-nemotron",
+  "description": "Governed NVIDIA Nemotron upstream provider for Solo.io Agentgateway.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F1E8",
+  "theme_color": "#2A6E5E",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

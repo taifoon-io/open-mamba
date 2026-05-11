@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────────────────────────────────────────────────────────────────────
+   open-mamba.dev — the cousin's own tokens.
+   Family DNA with taifoon.io (square corners, mono chrome, silver text)
+   but mint green is the accent and the vibe is friendlier.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --bg:        10  12  10;       /* near-black, faint warmth */
+  --surface:   16  19  16;
+  --surface-2: 22  25  22;
+
+  --text:      230 240 247;      /* shared silver with taifoon */
+  --muted:     230 240 247;      /* applied at 45–60% alpha */
+
+  --brand:     52  211 153;      /* #34D399 — mamba mint green */
+  --family:    61  165 255;      /* #3DA5FF — taifoon sky-blue, used for "part of family" callouts */
+  --accent:    244 114 182;      /* #F472B6 — pink, for tongue / playful moments */
+
+  --success:   52  211 153;
+  --warn:      251 191 36;
+  --danger:    248 113 113;
+  --info:      56  189 248;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  background: rgb(var(--bg));
+  color: rgb(var(--text));
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: rgb(var(--brand) / 0.35); color: rgb(var(--text)); }
+
+@layer components {
+  .container-tight { @apply mx-auto w-full max-w-[1100px] px-6; }
+
+  .eyebrow  { @apply font-mono text-[11px] uppercase tracking-[0.2em] text-text/55; }
+  .label    { @apply font-mono text-[11px] uppercase tracking-[0.16em] text-text/45; }
+  .micro    { @apply font-mono text-[10px] uppercase tracking-[0.18em] text-text/45; }
+
+  /* Buttons — square, hairline border, mono */
+  .btn          { @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-[12px] uppercase tracking-[0.15em] transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none; }
+  .btn-primary  { @apply btn text-bg bg-brand hover:bg-brand/90; }
+  .btn-ghost    { @apply btn text-text/80 bg-transparent border border-text/[0.12] hover:border-brand/60 hover:text-brand; }
+  .btn-link     { @apply inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.15em] text-text/60 hover:text-brand transition-colors; }
+
+  .card         { @apply border border-text/[0.06] bg-surface/40; }
+  .card-hover   { @apply card transition-colors hover:border-brand/40 hover:bg-surface/60; }
+
+  .badge        { @apply inline-flex items-center gap-1 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em]; }
+  .badge-brand  { @apply badge bg-brand/15 text-brand; }
+  .badge-family { @apply badge bg-family/15 text-family; }
+  .badge-muted  { @apply badge bg-text/[0.06] text-text/60; }
+
+  .input, .select, .textarea {
+    @apply w-full border border-text/[0.08] bg-surface2/60 px-3 py-2 text-sm text-text outline-none transition-colors placeholder:text-text/30 focus:border-brand;
+  }
+  .textarea { @apply font-mono min-h-[110px] resize-y; }
+
+  .bracketed { @apply inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-text/45; }
+  .bracketed::before { content: "["; @apply text-brand/70; }
+  .bracketed::after  { content: "]"; @apply text-brand/70; }
+}
+
+/* Coordinate grid w/ mint tint — same DNA as taifoon but greener */
+.coord-grid {
+  background-image:
+    linear-gradient(rgb(var(--brand) / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--brand) / 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.coord-grid-fade {
+  -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, #000 30%, transparent 80%);
+          mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, #000 30%, transparent 80%);
+}
+.vignette {
+  background: radial-gradient(ellipse 70% 60% at 50% 0%,
+    rgb(var(--brand) / 0.18), transparent 65%);
+}
+
+/* Live dot — uses brand mint */
+.live-dot { position: relative; display: inline-block; width: 8px; height: 8px; background: rgb(var(--brand)); }
+.live-dot::after {
+  content: ""; position: absolute; inset: 0; background: rgb(var(--brand));
+  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes ping { 75%, 100% { transform: scale(2.4); opacity: 0; } }
+
+.page-enter { animation: fadeIn 0.4s ease-out both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
